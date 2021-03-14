@@ -2,7 +2,32 @@
 
 dpkg --add-architecture i386
 apt update
-apt install -y ca-certificates awscli lib32gcc1 lib32stdc++6 libsdl2-2.0-0:i386
+apt install -y \
+    autoconf \
+    autoconf-archive \
+    autogen \
+    automake \
+    awscli \
+    ca-certificates \
+    cmake \
+    gcc \
+    git \
+    lib32gcc1 \
+    lib32stdc++6 \
+    libelf-dev \
+    libjson-c-dev \
+    libjudy-dev \
+    liblz4-dev \
+    libmnl-dev \
+    libsdl2-2.0-0:i386 \
+    libssl-dev \
+    libtool \
+    libuv1-dev \
+    make \
+    pkg-config \
+    uuid-dev \
+    zlib1g-dev
+
 bash <(curl -Ss https://my-netdata.io/kickstart.sh)
 
 useradd -m vhserver
@@ -98,7 +123,7 @@ cp /home/vhserver/valheim/valheim.service /etc/systemd/system
 su - vhserver -c "bash /home/vhserver/valheim/install_valheim.sh"
 
 (crontab -l ; echo "@reboot sleep 300 && /home/vhserver/valheim/backup_valheim.sh") | su - vhserver -c "crontab -"
-(crontab -l ; echo "@reboot sleep 3600 && /home/vhserver/valheim/backup_valheim.sh") | su - vhserver -c "crontab -"
+(crontab -l ; echo "@hourly && /home/vhserver/valheim/backup_valheim.sh") | su - vhserver -c "crontab -"
 
 systemctl daemon-reload
 systemctl enable valheim.service

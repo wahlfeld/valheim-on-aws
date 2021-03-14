@@ -95,6 +95,10 @@ resource "aws_iam_policy_attachment" "s3" {
   policy_arn = aws_iam_policy.s3.arn
 }
 
+data "aws_iam_policy" "ssm" {
+  arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 resource "aws_iam_policy_attachment" "ssm" {
   name       = "valheim-ssm"
   roles      = [aws_iam_role.valheim.name]
@@ -124,10 +128,10 @@ resource "aws_s3_bucket_policy" "valheim" {
 }
 
 resource "aws_s3_bucket_object" "admin_list" {
-  bucket = "wahlfeld-valheim"
-  key    = "/adminlist.txt"
-  source = templatefile("./local/adminlist.txt", { admins = values(var.admins) })
-  etag   = filemd5("./local/adminlist.txt")
+  bucket         = "wahlfeld-valheim"
+  key            = "/adminlist.txt"
+  content_base64 = base64encode(templatefile("./local/adminlist.txt", { admins = values(var.admins) }))
+  etag           = filemd5("./local/adminlist.txt")
 }
 
 resource "aws_instance" "valheim" {
@@ -145,6 +149,10 @@ resource "aws_instance" "valheim" {
       "Description" = "Instance running a Valheim server"
     }
   )
+
+  depends_on = [
+    aws_s3_bucket_object.admin_list
+  ]
 }
 
 resource "aws_sns_topic" "valheim" {
@@ -190,7 +198,7 @@ resource "aws_iam_group" "valheim_users" {
 
 resource "aws_iam_policy" "valheim_users" {
   name        = "valheim-user"
-  description = "A test policy"
+  description = "Allows Valheim users to start the server"
   policy = jsonencode({
     Version = "2012-10-17"
     "Statement" : [
@@ -203,7 +211,15 @@ resource "aws_iam_policy" "valheim_users" {
       },
       {
         Effect : "Allow",
-        Action : "ec2:DescribeInstances",
+        Action : [
+          "cloudwatch:DescribeAlarms",
+          "ec2:DescribeAddresses",
+          "ec2:DescribeInstanceAttribute",
+          "ec2:DescribeInstanceStatus",
+          "ec2:DescribeInstances",
+          "ec2:DescribeKeyPairs",
+          "ec2:DescribeNetworkInterfaces"
+        ]
         Resource : "*"
       }
     ]
@@ -242,6 +258,11 @@ resource "aws_iam_group_policy_attachment" "valheim_users" {
 #   ]
 # }
 
+data "aws_route53_zone" "selected" {
+  count = var.use_domain ? 1 : 0
+  name  = "cwahlfeld.com."
+}
+
 resource "aws_route53_record" "valheim" {
   count   = var.use_domain ? 1 : 0
   zone_id = data.aws_route53_zone.selected[0].zone_id
@@ -251,4 +272,12 @@ resource "aws_route53_record" "valheim" {
   records = [
     aws_instance.valheim.public_dns
   ]
+}
+
+# output "valheim_user_passwords" {
+#   value = { for i in aws_iam_user_login_profile.valheim_user : i.user => i.encrypted_password }
+# }
+
+output "monitoring_url" {
+  value = format("%s%s%s", "http://", try(aws_route53_record.valheim[0].fqdn, aws_instance.valheim.public_dns), ":19999")
 }
