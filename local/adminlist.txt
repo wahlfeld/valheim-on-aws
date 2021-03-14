@@ -1,0 +1,3 @@
+%{ for admin in admins ~}
+${admin}
+%{ endfor ~}
