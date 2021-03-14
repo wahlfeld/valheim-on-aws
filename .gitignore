@@ -91,6 +91,8 @@ modules.xml
 .idea/sonarlint
 
 ### Terraform ###
+*.terraform.lock.hcl
+
 # Local .terraform directories
 **/.terraform/*
 
