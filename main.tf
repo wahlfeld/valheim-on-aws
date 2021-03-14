@@ -1,10 +1,3 @@
-locals {
-  tags = {
-    "Purpose"   = "Valheim Server"
-    "CreatedBy" = "Terraform"
-  }
-}
-
 resource "aws_security_group" "ingress" {
   tags = merge(local.tags,
     {
@@ -65,6 +58,9 @@ resource "aws_iam_role" "valheim" {
       }
     ]
   })
+  tags = merge(local.tags,
+    {}
+  )
 }
 
 resource "aws_iam_instance_profile" "valheim" {
@@ -91,10 +87,6 @@ resource "aws_iam_policy" "s3" {
       }
     ]
   })
-}
-
-data "aws_iam_policy" "ssm" {
-  arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
 resource "aws_iam_policy_attachment" "s3" {
@@ -135,7 +127,7 @@ resource "aws_s3_bucket_object" "admin_list" {
   bucket = "wahlfeld-valheim"
   key    = "/adminlist.txt"
   source = templatefile("./local/adminlist.txt", { admins = values(var.admins) })
-  etag = filemd5("./local/adminlist.txt")
+  etag   = filemd5("./local/adminlist.txt")
 }
 
 resource "aws_instance" "valheim" {
@@ -157,6 +149,9 @@ resource "aws_instance" "valheim" {
 
 resource "aws_sns_topic" "valheim" {
   name = "stop_valheim_server"
+  tags = merge(local.tags,
+    {}
+  )
 }
 
 resource "aws_sns_topic_subscription" "valheim" {
@@ -172,7 +167,7 @@ resource "aws_cloudwatch_metric_alarm" "valheim" {
   datapoints_to_alarm = "1"
   evaluation_periods  = "1"
   metric_name         = "NetworkIn"
-  period              = "600"
+  period              = "900"
   statistic           = "Average"
   namespace           = "AWS/EC2"
   threshold           = "50000"
@@ -193,51 +188,59 @@ resource "aws_iam_group" "valheim_users" {
   path = "/users/"
 }
 
-resource "aws_iam_group_policy" "valheim_users" {
-  name  = "valheim-users"
-  group = aws_iam_group.valheim_users.name
+resource "aws_iam_policy" "valheim_users" {
+  name        = "valheim-user"
+  description = "A test policy"
   policy = jsonencode({
     Version = "2012-10-17"
-    "Statement": [
-        {
-            Effect: "Allow",
-            Action: [
-                "ec2:StartInstances"
-            ],
-            Resource: aws_instance.valheim.arn,
-        },
-        {
-            Effect: "Allow",
-            Action: "ec2:DescribeInstances",
-            Resource: "*"
-        }
+    "Statement" : [
+      {
+        Effect : "Allow",
+        Action : [
+          "ec2:StartInstances"
+        ],
+        Resource : aws_instance.valheim.arn,
+      },
+      {
+        Effect : "Allow",
+        Action : "ec2:DescribeInstances",
+        Resource : "*"
+      }
     ]
   })
 }
 
-resource "aws_iam_user" "valheim_user" {
-  for_each = var.admins
-
-  name          = each.key
-  path          = "/"
-  force_destroy = true
+resource "aws_iam_group_policy_attachment" "valheim_users" {
+  group      = aws_iam_group.valheim_users.name
+  policy_arn = aws_iam_policy.valheim_users.arn
 }
 
-resource "aws_iam_user_login_profile" "valheim_user" {
-  for_each = aws_iam_user.valheim_user
+# resource "aws_iam_user" "valheim_user" {
+#   for_each = var.admins
 
-  user    = aws_iam_user.valheim_user[each.key].name
-  pgp_key = "keybase:wahlfeld"
-}
+#   name          = each.key
+#   path          = "/"
+#   force_destroy = true
+#   tags = merge(local.tags,
+#     {}
+#   )
+# }
 
-output "valheim_user_passwords" {
-  value = { for i in aws_iam_user_login_profile.valheim_user : i.user => i.encrypted_password }
-}
+# resource "aws_iam_user_login_profile" "valheim_user" {
+#   for_each = aws_iam_user.valheim_user
 
-data "aws_route53_zone" "selected" {
-  count = var.use_domain ? 1 : 0
-  name  = "cwahlfeld.com."
-}
+#   user    = aws_iam_user.valheim_user[each.key].name
+#   pgp_key = "keybase:wahlfeld"
+# }
+
+# resource "aws_iam_user_group_membership" "valheim_users" {
+#   for_each = aws_iam_user.valheim_user
+
+#   user = aws_iam_user.valheim_user[each.key].name
+#   groups = [
+#     aws_iam_group.valheim_users.name,
+#   ]
+# }
 
 resource "aws_route53_record" "valheim" {
   count   = var.use_domain ? 1 : 0
@@ -248,8 +251,4 @@ resource "aws_route53_record" "valheim" {
   records = [
     aws_instance.valheim.public_dns
   ]
-}
-
-output "monitoring_url" {
-  value = format("%s%s%s", "http://", try(aws_route53_record.valheim[0].fqdn, aws_instance.valheim.public_dns), ":19999")
 }

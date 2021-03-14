@@ -98,6 +98,7 @@ cp /home/vhserver/valheim/valheim.service /etc/systemd/system
 su - vhserver -c "bash /home/vhserver/valheim/install_valheim.sh"
 
 (crontab -l ; echo "@reboot sleep 300 && /home/vhserver/valheim/backup_valheim.sh") | su - vhserver -c "crontab -"
+(crontab -l ; echo "@reboot sleep 3600 && /home/vhserver/valheim/backup_valheim.sh") | su - vhserver -c "crontab -"
 
 systemctl daemon-reload
 systemctl enable valheim.service
