@@ -156,7 +156,7 @@ resource "aws_instance" "valheim" {
 }
 
 resource "aws_sns_topic" "valheim" {
-  name = "stop_valheim_server"
+  name = "valheim_server_status"
   tags = merge(local.tags,
     {}
   )
@@ -168,7 +168,7 @@ resource "aws_sns_topic_subscription" "valheim" {
   endpoint  = "cschwarzwahlfeld@gmail.com"
 }
 
-resource "aws_cloudwatch_metric_alarm" "valheim" {
+resource "aws_cloudwatch_metric_alarm" "stop_valheim" {
   alarm_name          = "stop_valheim_server"
   alarm_description   = "Will stop the Valheim server after a period of inactivity"
   comparison_operator = "LessThanThreshold"
@@ -189,6 +189,46 @@ resource "aws_cloudwatch_metric_alarm" "valheim" {
   tags = merge(local.tags,
     {}
   )
+}
+
+resource "aws_cloudwatch_event_rule" "valheim_starting" {
+  name        = "valheim-starting"
+  description = "Used to trigger notifications when the Valheim server starts"
+  event_pattern = jsonencode({
+    source : [
+      "aws.ec2"
+    ],
+    "detail-type" : [
+      "EC2 Instance State-change Notification"
+    ],
+    detail : {
+      state : [
+        "pending"
+      ],
+      "instance-id" : [
+        aws_instance.valheim.id
+      ]
+    }
+  })
+  tags = merge(local.tags,
+    {}
+  )
+}
+
+resource "aws_cloudwatch_event_target" "valheim_starting" {
+  rule      = aws_cloudwatch_event_rule.valheim_starting.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.valheim.arn
+  input_transformer {
+    input_paths = {
+      "account"     = "$.account"
+      "instance-id" = "$.detail.instance-id"
+      "region"      = "$.region"
+      "state"       = "$.detail.state"
+      "time"        = "$.time"
+    }
+    input_template = "\"At <time>, the status of your EC2 instance <instance-id> on account <account> in the AWS Region <region> has changed to <state>.\""
+  }
 }
 
 resource "aws_iam_group" "valheim_users" {
