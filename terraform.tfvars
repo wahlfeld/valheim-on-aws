@@ -1,5 +1,6 @@
 aws_region = "ap-southeast-2"
-use_domain = true
+bucket = "wahlfeld-valheim"
+domain = "cwahlfeld.com"
 admins = {
   "danny"  = 76561197993928955
   "simon"  = 76561197994340319

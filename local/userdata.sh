@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 dpkg --add-architecture i386
 apt update
 apt install -y \
@@ -12,6 +14,7 @@ apt install -y \
     cmake \
     gcc \
     git \
+    jq \
     lib32gcc1 \
     lib32stdc++6 \
     libelf-dev \
@@ -43,11 +46,21 @@ curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.g
 
 /home/vhserver/steam/steamcmd.sh +login anonymous +force_install_dir /home/vhserver/valheim +app_update 896660 validate +quit
 
+trap 'last_command=$current_command; current_command=$BASH_COMMAND' DEBUG
+trap 'echo "\"$${last_command}\" command filed with exit code $?."' EXIT
+
 EOF
 
 tee -a /home/vhserver/valheim/start_valheim.sh <<EOF
 #!/bin/bash
 set -e
+
+%{ if use_domain ~}
+echo "Updating cname"
+aws s3 cp s3://wahlfeld-valheim/update_cname.json /home/vhserver/update_cname.json
+aws s3 cp s3://wahlfeld-valheim/update_cname.sh /home/vhserver/update_cname.sh
+bash /home/vhserver/update_cname.sh
+%{ endif ~}
 
 export templdpath=$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=./linux64:$LD_LIBRARY_PATH
@@ -74,6 +87,9 @@ echo "Starting server PRESS CTRL-C to exit"
 ./valheim_server.x86_64 -name "curtos big server" -port 2456 -world "justadickwiggle" -password "bigpenis" -batchmode -nographics -public 1
 
 export LD_LIBRARY_PATH=$templdpath
+
+trap 'last_command=$current_command; current_command=$BASH_COMMAND' DEBUG
+trap 'echo "\"$${last_command}\" command filed with exit code $?."' EXIT
 
 EOF
 
@@ -108,6 +124,9 @@ echo "Backing up Valheim world data"
 aws s3 cp /home/vhserver/.config/unity3d/IronGate/Valheim/worlds/justadickwiggle.fwl s3://wahlfeld-valheim/
 aws s3 cp /home/vhserver/.config/unity3d/IronGate/Valheim/worlds/justadickwiggle.db s3://wahlfeld-valheim/
 
+trap 'last_command=$current_command; current_command=$BASH_COMMAND' DEBUG
+trap 'echo "\"$${last_command}\" command filed with exit code $?."' EXIT
+
 EOF
 
 chown vhserver:vhserver /home/vhserver/valheim/install_valheim.sh
@@ -128,3 +147,6 @@ su - vhserver -c "bash /home/vhserver/valheim/install_valheim.sh"
 systemctl daemon-reload
 systemctl enable valheim.service
 systemctl restart valheim
+
+trap 'last_command=$current_command; current_command=$BASH_COMMAND' DEBUG
+trap 'echo "\"$${last_command}\" command filed with exit code $?."' EXIT
