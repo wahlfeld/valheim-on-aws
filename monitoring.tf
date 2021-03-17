@@ -79,6 +79,16 @@ data "aws_route53_zone" "selected" {
   name  = "cwahlfeld.com."
 }
 
+resource "aws_route53_record" "valheim" {
+  count = var.domain != "" ? 1 : 0
+
+  zone_id = data.aws_route53_zone.selected[0].zone_id
+  name    = "valheim"
+  type    = "CNAME"
+  ttl     = "300"
+  records = [aws_instance.valheim.public_dns]
+}
+
 output "monitoring_url" {
-  value = format("%s%s%s", "http://", var.domain != "" ? format("%s%s", "valheim.", var.domain) : aws_instance.valheim.public_dns, ":19999")
+  value = format("%s%s%s", "http://", var.domain != "" ? aws_route53_record.valheim[0].fqdn : aws_instance.valheim.public_dns, ":19999")
 }

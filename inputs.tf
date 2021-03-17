@@ -21,6 +21,7 @@ variable "bucket" {
 }
 
 locals {
+  username = "vhserver"
   tags = {
     "Purpose"   = "Valheim Server"
     "CreatedBy" = "Terraform"

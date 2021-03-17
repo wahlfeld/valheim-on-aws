@@ -48,7 +48,8 @@ resource "aws_instance" "valheim" {
   ami           = "ami-0d767dd04ac152743"
   instance_type = "t3a.medium"
   user_data = templatefile("./local/userdata.sh", {
-    use_domain = var.domain != "" ? true : false
+    username = local.username
+    bucket   = var.bucket
   })
   iam_instance_profile = aws_iam_instance_profile.valheim.name
   vpc_security_group_ids = [
@@ -62,6 +63,11 @@ resource "aws_instance" "valheim" {
   )
 
   depends_on = [
+    aws_s3_bucket_object.install_valheim,
+    aws_s3_bucket_object.start_valheim,
+    aws_s3_bucket_object.backup_valheim,
+    aws_s3_bucket_object.crontab,
+    aws_s3_bucket_object.valheim_service,
     aws_s3_bucket_object.admin_list,
     aws_s3_bucket_object.update_cname_json[0],
     aws_s3_bucket_object.update_cname[0]
