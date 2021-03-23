@@ -13,9 +13,7 @@ resource "aws_iam_role" "valheim" {
       }
     ]
   })
-  tags = merge(local.tags,
-    {}
-  )
+  tags = merge(local.tags, {})
 }
 
 resource "aws_iam_instance_profile" "valheim" {
@@ -36,27 +34,19 @@ resource "aws_iam_policy" "valheim" {
           "s3:List*"
         ],
         Resource : [
-          "arn:aws:s3:::wahlfeld-valheim",
-          "arn:aws:s3:::wahlfeld-valheim/"
+          "arn:aws:s3:::${var.bucket}",
+          "arn:aws:s3:::${var.bucket}/"
         ]
       },
       {
         Effect : "Allow",
-        Action : [
-          "ec2:DescribeInstances"
-        ],
-        Resource : [
-          "*"
-        ]
+        Action : ["ec2:DescribeInstances"],
+        Resource : ["*"]
       },
       {
-        Action : [
-          "route53:ChangeResourceRecordSets"
-        ],
+        Action : ["route53:ChangeResourceRecordSets"],
         Effect : "Allow",
-        Resource : [
-          "arn:aws:route53:::hostedzone/${data.aws_route53_zone.selected[0].zone_id}"
-        ]
+        Resource : ["arn:aws:route53:::hostedzone/${data.aws_route53_zone.selected[0].zone_id}"]
       }
     ]
   })
@@ -91,9 +81,7 @@ resource "aws_iam_policy" "valheim_users" {
     "Statement" : [
       {
         Effect : "Allow",
-        Action : [
-          "ec2:StartInstances"
-        ],
+        Action : ["ec2:StartInstances"],
         Resource : aws_instance.valheim.arn,
       },
       {
@@ -118,33 +106,29 @@ resource "aws_iam_group_policy_attachment" "valheim_users" {
   policy_arn = aws_iam_policy.valheim_users.arn
 }
 
-# resource "aws_iam_user" "valheim_user" {
-#   for_each = var.admins
+resource "aws_iam_user" "valheim_user" {
+  for_each = var.admins
 
-#   name          = each.key
-#   path          = "/"
-#   force_destroy = true
-#   tags = merge(local.tags,
-#     {}
-#   )
-# }
+  name          = each.key
+  path          = "/"
+  force_destroy = true
+  tags          = merge(local.tags, {})
+}
 
-# resource "aws_iam_user_login_profile" "valheim_user" {
-#   for_each = aws_iam_user.valheim_user
+resource "aws_iam_user_login_profile" "valheim_user" {
+  for_each = aws_iam_user.valheim_user
 
-#   user    = aws_iam_user.valheim_user[each.key].name
-#   pgp_key = "keybase:wahlfeld"
-# }
+  user    = aws_iam_user.valheim_user[each.key].name
+  pgp_key = "keybase:${var.keybase_username}"
+}
 
-# resource "aws_iam_user_group_membership" "valheim_users" {
-#   for_each = aws_iam_user.valheim_user
+resource "aws_iam_user_group_membership" "valheim_users" {
+  for_each = aws_iam_user.valheim_user
 
-#   user = aws_iam_user.valheim_user[each.key].name
-#   groups = [
-#     aws_iam_group.valheim_users.name,
-#   ]
-# }
+  user   = aws_iam_user.valheim_user[each.key].name
+  groups = [aws_iam_group.valheim_users.name]
+}
 
-# output "valheim_user_passwords" {
-#   value = { for i in aws_iam_user_login_profile.valheim_user : i.user => i.encrypted_password }
-# }
+output "valheim_user_passwords" {
+  value = { for i in aws_iam_user_login_profile.valheim_user : i.user => i.encrypted_password }
+}

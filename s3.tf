@@ -14,27 +14,25 @@ resource "aws_s3_bucket_policy" "valheim" {
           "s3:Get*",
           "s3:List*"
         ],
-        Resource : "arn:aws:s3:::wahlfeld-valheim/*"
+        Resource : "arn:aws:s3:::${var.bucket}/*"
       }
     ]
   })
 }
 
 resource "aws_s3_bucket_object" "install_valheim" {
-  bucket = var.bucket
-  key    = "/install_valheim.sh"
-  content_base64 = base64encode(templatefile("./local/install_valheim.sh", {
-    username = local.username
-  }))
-  etag = filemd5("./local/install_valheim.sh")
+  bucket         = var.bucket
+  key            = "/install_valheim.sh"
+  content_base64 = base64encode(templatefile("./local/install_valheim.sh", { username = local.username }))
+  etag           = filemd5("./local/install_valheim.sh")
 }
 
 resource "aws_s3_bucket_object" "bootstrap_valheim" {
   bucket = var.bucket
   key    = "/bootstrap_valheim.sh"
   content_base64 = base64encode(templatefile("./local/bootstrap_valheim.sh", {
-    username   = local.username
-    bucket     = var.bucket
+    username = local.username
+    bucket   = var.bucket
   }))
   etag = filemd5("./local/bootstrap_valheim.sh")
 }
@@ -43,9 +41,12 @@ resource "aws_s3_bucket_object" "start_valheim" {
   bucket = var.bucket
   key    = "/start_valheim.sh"
   content_base64 = base64encode(templatefile("./local/start_valheim.sh", {
-    username   = local.username
-    bucket     = var.bucket
-    use_domain = var.domain != "" ? true : false
+    username        = local.username
+    bucket          = var.bucket
+    use_domain      = var.domain != "" ? true : false
+    world_name      = var.world_name
+    server_name     = var.server_name
+    server_password = var.server_password
   }))
   etag = filemd5("./local/start_valheim.sh")
 }
@@ -61,21 +62,17 @@ resource "aws_s3_bucket_object" "backup_valheim" {
 }
 
 resource "aws_s3_bucket_object" "crontab" {
-  bucket = var.bucket
-  key    = "/crontab"
-  content_base64 = base64encode(templatefile("./local/crontab", {
-    username = local.username
-  }))
-  etag = filemd5("./local/crontab")
+  bucket         = var.bucket
+  key            = "/crontab"
+  content_base64 = base64encode(templatefile("./local/crontab", { username = local.username }))
+  etag           = filemd5("./local/crontab")
 }
 
 resource "aws_s3_bucket_object" "valheim_service" {
-  bucket = var.bucket
-  key    = "/valheim.service"
-  content_base64 = base64encode(templatefile("./local/valheim.service", {
-    username = local.username
-  }))
-  etag = filemd5("./local/valheim.service")
+  bucket         = var.bucket
+  key            = "/valheim.service"
+  content_base64 = base64encode(templatefile("./local/valheim.service", { username = local.username }))
+  etag           = filemd5("./local/valheim.service")
 }
 
 resource "aws_s3_bucket_object" "admin_list" {

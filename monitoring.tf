@@ -1,61 +1,47 @@
 resource "aws_sns_topic" "valheim" {
   name = "valheim_server_status"
-  tags = merge(local.tags,
-    {}
-  )
+  tags = merge(local.tags, {})
 }
 
 resource "aws_sns_topic_subscription" "valheim" {
   topic_arn = aws_sns_topic.valheim.arn
   protocol  = "email"
-  endpoint  = "cschwarzwahlfeld@gmail.com"
+  endpoint  = var.sns_email
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_cloudwatch_metric_alarm" "stop_valheim" {
   alarm_name          = "stop_valheim_server"
   alarm_description   = "Will stop the Valheim server after a period of inactivity"
   comparison_operator = "LessThanThreshold"
-  datapoints_to_alarm = "1"
-  evaluation_periods  = "1"
+  datapoints_to_alarm = "3"
+  evaluation_periods  = "3"
   metric_name         = "NetworkIn"
-  period              = "900"
+  period              = "300"
   statistic           = "Average"
   namespace           = "AWS/EC2"
   threshold           = "50000"
   alarm_actions = [
     aws_sns_topic.valheim.arn,
-    "arn:aws:swf:ap-southeast-2:063286155141:action/actions/AWS_EC2.InstanceId.Stop/1.0",
+    "arn:aws:swf:ap-southeast-2:${data.aws_caller_identity.current.account_id}:action/actions/AWS_EC2.InstanceId.Stop/1.0",
   ]
-  dimensions = {
-    "InstanceId" = aws_instance.valheim.id
-  }
-  tags = merge(local.tags,
-    {}
-  )
+  dimensions = { "InstanceId" = aws_instance.valheim.id }
+  tags       = merge(local.tags, {})
 }
 
 resource "aws_cloudwatch_event_rule" "valheim_starting" {
   name        = "valheim-starting"
   description = "Used to trigger notifications when the Valheim server starts"
   event_pattern = jsonencode({
-    source : [
-      "aws.ec2"
-    ],
-    "detail-type" : [
-      "EC2 Instance State-change Notification"
-    ],
+    source : ["aws.ec2"],
+    "detail-type" : ["EC2 Instance State-change Notification"],
     detail : {
-      state : [
-        "pending"
-      ],
-      "instance-id" : [
-        aws_instance.valheim.id
-      ]
+      state : ["pending"],
+      "instance-id" : [aws_instance.valheim.id]
     }
   })
-  tags = merge(local.tags,
-    {}
-  )
+  tags = merge(local.tags, {})
 }
 
 resource "aws_cloudwatch_event_target" "valheim_starting" {
@@ -76,7 +62,8 @@ resource "aws_cloudwatch_event_target" "valheim_starting" {
 
 data "aws_route53_zone" "selected" {
   count = var.domain != "" ? 1 : 0
-  name  = "cwahlfeld.com."
+
+  name = "${var.domain}."
 }
 
 resource "aws_route53_record" "valheim" {
