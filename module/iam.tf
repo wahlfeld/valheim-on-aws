@@ -1,5 +1,5 @@
 resource "aws_iam_role" "valheim" {
-  name = "valheim-server"
+  name = "${local.name}-server"
   assume_role_policy = jsonencode({
     Version : "2012-10-17",
     Statement : [
@@ -21,7 +21,7 @@ resource "aws_iam_instance_profile" "valheim" {
 }
 
 resource "aws_iam_policy" "valheim" {
-  name        = "valheim-server"
+  name        = "${local.name}-server"
   description = "Allows the Valheim server to interact with various AWS services"
   policy = jsonencode({
     Version : "2012-10-17",
@@ -34,15 +34,27 @@ resource "aws_iam_policy" "valheim" {
           "s3:List*"
         ],
         Resource : [
-          "arn:aws:s3:::${var.bucket}",
-          "arn:aws:s3:::${var.bucket}/"
+          "arn:aws:s3:::${aws_s3_bucket.valheim.id}",
+          "arn:aws:s3:::${aws_s3_bucket.valheim.id}/"
         ]
       },
       {
         Effect : "Allow",
         Action : ["ec2:DescribeInstances"],
         Resource : ["*"]
-      },
+      }
+    ]
+  })
+}
+
+resource "aws_iam_policy" "valheim_cname" {
+  count = var.domain != "" ? 1 : 0
+
+  name        = "${local.name}-cname"
+  description = "Allows the Valheim server to update its own CNAME when recreated"
+  policy = jsonencode({
+    Version : "2012-10-17",
+    Statement : [
       {
         Action : ["route53:ChangeResourceRecordSets"],
         Effect : "Allow",
@@ -53,9 +65,17 @@ resource "aws_iam_policy" "valheim" {
 }
 
 resource "aws_iam_policy_attachment" "valheim" {
-  name       = "valheim"
+  name       = local.name
   roles      = [aws_iam_role.valheim.name]
   policy_arn = aws_iam_policy.valheim.arn
+}
+
+resource "aws_iam_policy_attachment" "valheim_cname" {
+  count = var.domain != "" ? 1 : 0
+
+  name       = "${local.name}-cname"
+  roles      = [aws_iam_role.valheim.name]
+  policy_arn = aws_iam_policy.valheim_cname[0].arn
 }
 
 data "aws_iam_policy" "ssm" {
@@ -63,18 +83,18 @@ data "aws_iam_policy" "ssm" {
 }
 
 resource "aws_iam_policy_attachment" "ssm" {
-  name       = "valheim-ssm"
+  name       = "${local.name}-ssm"
   roles      = [aws_iam_role.valheim.name]
   policy_arn = data.aws_iam_policy.ssm.arn
 }
 
 resource "aws_iam_group" "valheim_users" {
-  name = "valheim-users"
+  name = "${local.name}-users"
   path = "/users/"
 }
 
 resource "aws_iam_policy" "valheim_users" {
-  name        = "valheim-user"
+  name        = "${local.name}-user"
   description = "Allows Valheim users to start the server"
   policy = jsonencode({
     Version = "2012-10-17"

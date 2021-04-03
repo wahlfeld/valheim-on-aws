@@ -15,11 +15,6 @@ variable "domain" {
   description = "Domain name used to create a static monitoring URL"
 }
 
-variable "bucket" {
-  type        = string
-  description = "S3 bucket used for storing backups and other content"
-}
-
 variable "keybase_username" {
   type        = string
   description = "The Keybase username to encrypt AWS user passwords with"
@@ -51,10 +46,24 @@ variable "server_password" {
   description = "The server password"
 }
 
+variable "purpose" {
+  type        = string
+  default     = "prod"
+  description = "The purpose of the deployment"
+}
+
+variable "unique_id" {
+  type        = string
+  default     = ""
+  description = "The ID of the deployment (used for tests)"
+}
+
 locals {
   username = "vhserver"
   tags = {
-    "Purpose"   = "Valheim Server"
+    "Purpose"   = var.purpose
+    "Component" = "Valheim Server"
     "CreatedBy" = "Terraform"
   }
+  name = var.purpose == "test" ? "valheim-${var.purpose}${var.unique_id}" : "valheim-${var.purpose}"
 }

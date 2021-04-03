@@ -1,5 +1,5 @@
 resource "aws_sns_topic" "valheim" {
-  name = "valheim_server_status"
+  name = "${local.name}-status"
   tags = merge(local.tags, {})
 }
 
@@ -11,8 +11,8 @@ resource "aws_sns_topic_subscription" "valheim" {
 
 data "aws_caller_identity" "current" {}
 
-resource "aws_cloudwatch_metric_alarm" "stop_valheim" {
-  alarm_name          = "stop_valheim_server"
+resource "aws_cloudwatch_metric_alarm" "valheim_stopping" {
+  alarm_name          = "${local.name}-stopping"
   alarm_description   = "Will stop the Valheim server after a period of inactivity"
   comparison_operator = "LessThanThreshold"
   datapoints_to_alarm = "3"
@@ -31,7 +31,7 @@ resource "aws_cloudwatch_metric_alarm" "stop_valheim" {
 }
 
 resource "aws_cloudwatch_event_rule" "valheim_starting" {
-  name        = "valheim-starting"
+  name        = "${local.name}-starting"
   description = "Used to trigger notifications when the Valheim server starts"
   event_pattern = jsonencode({
     source : ["aws.ec2"],
@@ -70,7 +70,7 @@ resource "aws_route53_record" "valheim" {
   count = var.domain != "" ? 1 : 0
 
   zone_id = data.aws_route53_zone.selected[0].zone_id
-  name    = "valheim"
+  name    = local.name
   type    = "CNAME"
   ttl     = "300"
   records = [aws_instance.valheim.public_dns]

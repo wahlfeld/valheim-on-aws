@@ -1,7 +1,7 @@
 resource "aws_security_group" "ingress" {
   tags = merge(local.tags,
     {
-      "Name"        = "Valheim Ingress"
+      "Name"        = "${local.name}-ingress"
       "Description" = "Security group allowing inbound traffic to the Valheim server"
     }
   )
@@ -37,13 +37,21 @@ resource "aws_security_group_rule" "egress" {
   description       = "Allow all egress rule for the Valheim server"
 }
 
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  owners      = ["099720109477"]
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.*-amd64-server-*"]
+  }
+}
+
 resource "aws_instance" "valheim" {
-  # Free tier eligible: Ubuntu Server 20.04 LTS (HVM), SSD Volume Type
-  ami           = "ami-0d767dd04ac152743"
+  ami           = data.aws_ami.ubuntu.id
   instance_type = var.instance_type
-  user_data = templatefile("./local/userdata.sh", {
+  user_data = templatefile("${path.module}/local/userdata.sh", {
     username = local.username
-    bucket   = var.bucket
+    bucket   = aws_s3_bucket.valheim.id
   })
   iam_instance_profile = aws_iam_instance_profile.valheim.name
   vpc_security_group_ids = [
@@ -51,7 +59,7 @@ resource "aws_instance" "valheim" {
   ]
   tags = merge(local.tags,
     {
-      "Name"        = "Valheim Server"
+      "Name"        = "${local.name}-server"
       "Description" = "Instance running a Valheim server"
     }
   )

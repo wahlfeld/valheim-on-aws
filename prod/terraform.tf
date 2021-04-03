@@ -3,7 +3,7 @@ terraform {
 
   backend "s3" {
     bucket = "wahlfeldterraform"
-    key    = "valheim-server"
+    key    = "valheim-server/terraform.tfstate"
     region = "ap-southeast-2"
   }
 

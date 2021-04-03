@@ -1,5 +1,4 @@
 aws_region       = "ap-southeast-2"
-bucket           = "wahlfeld-valheim"
 domain           = "cwahlfeld.com"
 keybase_username = "wahlfeld"
 sns_email        = "cschwarzwahlfeld@gmail.com"
