@@ -3,13 +3,17 @@ repos:
     rev: v0.1.12
     hooks:
       - id: terraform-fmt
-      - id: terraform-validate
+      # - id: terraform-validate
       - id: terragrunt-hclfmt
       - id: tflint
-      - id: shellcheck
+      # - id: shellcheck
       - id: gofmt
       - id: goimports
       - id: golint
       - id: yapf
       - id: helmlint
       - id: markdown-link-check
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.48.0
+    hooks:
+      - id: terraform_tfsec

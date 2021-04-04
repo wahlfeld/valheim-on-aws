@@ -1,3 +1,4 @@
+#tfsec:ignore:AWS016
 resource "aws_sns_topic" "valheim" {
   name = "${local.name}-status"
   tags = merge(local.tags, {})

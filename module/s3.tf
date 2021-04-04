@@ -1,7 +1,9 @@
+#tfsec:ignore:AWS002 tfsec:ignore:AWS017
 resource "aws_s3_bucket" "valheim" {
   bucket = "wahlfeld-${local.name}"
   acl    = "private"
   tags   = merge(local.tags, {})
+  versioning { enabled = true }
 }
 
 resource "aws_s3_bucket_policy" "valheim" {
