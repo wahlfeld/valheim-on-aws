@@ -25,7 +25,7 @@ resource "aws_cloudwatch_metric_alarm" "valheim_stopping" {
   threshold           = "50000"
   alarm_actions = [
     aws_sns_topic.valheim.arn,
-    "arn:aws:swf:ap-southeast-2:${data.aws_caller_identity.current.account_id}:action/actions/AWS_EC2.InstanceId.Stop/1.0",
+    "arn:aws:swf:${var.aws_region}:${data.aws_caller_identity.current.account_id}:action/actions/AWS_EC2.InstanceId.Stop/1.0",
   ]
   dimensions = { "InstanceId" = aws_instance.valheim.id }
   tags       = merge(local.tags, {})

@@ -131,3 +131,5 @@ override.tf.json
 *.code-workspace
 
 # End of https://www.toptal.com/developers/gitignore/api/terraform,vscode,intellij+all
+
+*.lock.json

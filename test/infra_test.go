@@ -13,7 +13,7 @@ import (
 func TestTerraform(t *testing.T) {
 	t.Parallel()
 
-	region := "ap-southeast-2"
+	region := aws.GetRandomStableRegion(t, nil, nil)
 	uniqueID := strings.ToLower(random.UniqueId())
 	stateBucket := fmt.Sprintf("%s%s-terratest", uniqueID, uniqueID)
 	key := fmt.Sprintf("%s/terraform.tfstate", uniqueID)

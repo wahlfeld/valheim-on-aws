@@ -1,0 +1,7 @@
+brew "go"
+brew "terraform"
+brew "tflint"
+brew "shellcheck"
+brew "tfsec"
+brew "terraform-docs"
+brew "pre-commit"

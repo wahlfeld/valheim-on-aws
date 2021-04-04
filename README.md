@@ -2,13 +2,17 @@
 
 ## todo
 
+- write usage section
 - don't include empty keys in admin list
 - fix shellcheck and terraform validate pre commit checks?
 - improve terratest e.g. ssm
 - add lifecycle rule to s3 bucket
 
-## terraform-docs
-`terraform-docs markdown ./module --output-file ../README.md --hide modules --hide resources --hide requirements --hide providers`
+## Install dependencies
+`make install`
+
+## Usage
+todo
 
 <!-- BEGIN_TF_DOCS -->
 ## Inputs

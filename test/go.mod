@@ -1,8 +1,5 @@
-module valheim-on-aws
+module test
 
-go 1.15
+go 1.16
 
-require (
-	github.com/gruntwork-io/terratest v0.32.17
-	github.com/stretchr/testify v1.7.0 // indirect
-)
+require github.com/gruntwork-io/terratest v0.32.20
