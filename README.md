@@ -1,22 +1,16 @@
-# todo
+# valheim-on-aws
+
+## todo
 
 - don't include empty keys in admin list
 - fix shellcheck and terraform validate pre commit checks?
 - improve terratest e.g. ssm
 - add lifecycle rule to s3 bucket
 
-# terraform-docs
-`terraform-docs markdown ./module --output-file ../README.md --hide modules --hide resources --hide requirements`
-
-# Usage
+## terraform-docs
+`terraform-docs markdown ./module --output-file ../README.md --hide modules --hide resources --hide requirements --hide providers`
 
 <!-- BEGIN_TF_DOCS -->
-## Providers
-
-| Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | n/a |
-
 ## Inputs
 
 | Name | Description | Type | Default | Required |
