@@ -150,5 +150,6 @@ resource "aws_iam_user_group_membership" "valheim_users" {
 }
 
 output "valheim_user_passwords" {
-  value = { for i in aws_iam_user_login_profile.valheim_user : i.user => i.encrypted_password }
+  value       = { for i in aws_iam_user_login_profile.valheim_user : i.user => i.encrypted_password }
+  description = "List of AWS users and their encrypted passwords"
 }

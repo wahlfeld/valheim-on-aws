@@ -19,14 +19,6 @@ resource "aws_s3_bucket" "valheim_test" {
   versioning { enabled = true }
 }
 
-locals {
-  bucket_id = var.purpose == "test" ? aws_s3_bucket.valheim_test[0].id : aws_s3_bucket.valheim[0].id
-}
-
-output "bucket_id" {
-  value = local.bucket_id
-}
-
 resource "aws_s3_bucket_policy" "valheim" {
   bucket = local.bucket_id
   policy = jsonencode({
@@ -132,4 +124,9 @@ resource "aws_s3_bucket_object" "update_cname" {
     zone_id    = data.aws_route53_zone.selected[0].zone_id
   }))
   etag = filemd5("${path.module}/local/update_cname.sh")
+}
+
+output "bucket_id" {
+  value       = local.bucket_id
+  description = "The S3 bucket name"
 }

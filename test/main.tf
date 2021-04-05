@@ -1,5 +1,5 @@
 terraform {
-  # backend "s3" {}
+  backend "s3" {}
 
   required_version = "~> 0.14.0"
 
@@ -19,6 +19,18 @@ provider "aws" {
   region = var.aws_region
 }
 
+variable "aws_region" {}
+variable "admins" { type = map(any) }
+variable "domain" {}
+variable "keybase_username" {}
+variable "instance_type" {}
+variable "sns_email" {}
+variable "world_name" {}
+variable "server_name" {}
+variable "server_password" {}
+variable "purpose" {}
+variable "unique_id" {}
+
 module "test" {
   source = "../module"
 
@@ -37,4 +49,8 @@ module "test" {
 
 output "bucket_id" {
   value = module.test.bucket_id
+}
+
+output "instance_id" {
+  value = module.test.instance_id
 }

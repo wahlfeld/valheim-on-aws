@@ -21,7 +21,7 @@ validate:
 	cd ${ROOT}/template \
 		&& terraform init --backend=false -no-color && terraform validate -no-color
 
-test:
+test: clean	
 	cd ${ROOT}/test \
 		&& rm -rf ${ROOT}/test/go.* \
 		&& go mod init test \
@@ -32,6 +32,6 @@ docs:
 	terraform-docs markdown ${ROOT}/module --output-file ../README.md --hide modules --hide resources --hide requirements --hide providers
 
 clean:
-	for i in $$(find . -iname '.terraform' -o -iname '*.lock.*' -o -iname '*.tfstate*'); do rm -rf $$i; done
+	for i in $$(find . -iname '.terraform' -o -iname '*.lock.*' -o -iname '*.tfstate*' -o -iname '.test-data'); do rm -rf $$i; done
 
 .PHONY: all ci install fmt check validate test docs clean

@@ -78,5 +78,6 @@ resource "aws_route53_record" "valheim" {
 }
 
 output "monitoring_url" {
-  value = format("%s%s%s", "http://", var.domain != "" ? aws_route53_record.valheim[0].fqdn : aws_instance.valheim.public_dns, ":19999")
+  value       = format("%s%s%s", "http://", var.domain != "" ? aws_route53_record.valheim[0].fqdn : aws_instance.valheim.public_dns, ":19999")
+  description = "URL to monitor the Valheim Server"
 }

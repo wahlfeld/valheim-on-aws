@@ -4,12 +4,8 @@
 
 - write usage section
 - don't include empty keys in admin list
-- fix shellcheck and terraform validate pre commit checks?
-- improve terratest e.g. ssm
-- check if terratest is using s3 backend
-- add lifecycle rule to s3 bucket
-- write output descriptions
-- consider not using bucket prevent_destroy to simplify code?
+- fix shellcheck and terraform docs pre commit
+- consider not using bucket prevent_destroy to simplify code
 
 ## Install dependencies
 `make install`
@@ -38,7 +34,8 @@ todo
 
 | Name | Description |
 |------|-------------|
-| <a name="output_bucket_id"></a> [bucket\_id](#output\_bucket\_id) | n/a |
-| <a name="output_monitoring_url"></a> [monitoring\_url](#output\_monitoring\_url) | n/a |
-| <a name="output_valheim_user_passwords"></a> [valheim\_user\_passwords](#output\_valheim\_user\_passwords) | n/a |
+| <a name="output_bucket_id"></a> [bucket\_id](#output\_bucket\_id) | The S3 bucket name |
+| <a name="output_instance_id"></a> [instance\_id](#output\_instance\_id) | The EC2 instance ID |
+| <a name="output_monitoring_url"></a> [monitoring\_url](#output\_monitoring\_url) | URL to monitor the Valheim Server |
+| <a name="output_valheim_user_passwords"></a> [valheim\_user\_passwords](#output\_valheim\_user\_passwords) | List of AWS users and their encrypted passwords |
 <!-- END_TF_DOCS -->

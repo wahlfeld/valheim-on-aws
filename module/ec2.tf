@@ -76,3 +76,8 @@ resource "aws_instance" "valheim" {
     aws_s3_bucket_object.update_cname[0]
   ]
 }
+
+output "instance_id" {
+  value       = aws_instance.valheim.id
+  description = "The EC2 instance ID"
+}

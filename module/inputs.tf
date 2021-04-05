@@ -65,5 +65,6 @@ locals {
     "Component" = "Valheim Server"
     "CreatedBy" = "Terraform"
   }
-  name = var.purpose != "prod" ? "valheim-${var.purpose}${var.unique_id}" : "valheim"
+  name      = var.purpose != "prod" ? "valheim-${var.purpose}${var.unique_id}" : "valheim"
+  bucket_id = var.purpose == "test" ? aws_s3_bucket.valheim_test[0].id : aws_s3_bucket.valheim[0].id
 }

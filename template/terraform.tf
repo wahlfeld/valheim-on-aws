@@ -4,7 +4,7 @@ terraform {
   backend "s3" {
     bucket = "CHANGEME"
     key    = "valheim-server/terraform.tfstate"
-    region = "ap-southeast-2"
+    region = "CHANGEME"
   }
 
   required_providers {
