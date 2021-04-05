@@ -65,5 +65,5 @@ locals {
     "Component" = "Valheim Server"
     "CreatedBy" = "Terraform"
   }
-  name = var.purpose == "test" ? "valheim-${var.purpose}${var.unique_id}" : "valheim-${var.purpose}"
+  name = var.purpose != "prod" ? "valheim-${var.purpose}${var.unique_id}" : "valheim"
 }

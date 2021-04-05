@@ -1,4 +1,6 @@
 terraform {
+  # backend "s3" {}
+
   required_version = "~> 0.14.0"
 
   required_providers {
@@ -31,4 +33,8 @@ module "test" {
   server_password  = var.server_password
   purpose          = var.purpose
   unique_id        = var.unique_id
+}
+
+output "bucket_id" {
+  value = module.test.bucket_id
 }

@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 ROOT=${PWD}
 
-all: install fmt check validate docs test clean
+all: install fmt check validate test docs clean
 
 ci: check validate test
 
@@ -32,6 +32,6 @@ docs:
 	terraform-docs markdown ${ROOT}/module --output-file ../README.md --hide modules --hide resources --hide requirements --hide providers
 
 clean:
-	for i in $$(find . -iname '.terraform' -o -iname '*.lock.*'); do rm -rf $$i; done
+	for i in $$(find . -iname '.terraform' -o -iname '*.lock.*' -o -iname '*.tfstate*'); do rm -rf $$i; done
 
 .PHONY: all ci install fmt check validate test docs clean

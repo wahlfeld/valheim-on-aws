@@ -8,6 +8,7 @@ import (
 	"github.com/gruntwork-io/terratest/modules/aws"
 	"github.com/gruntwork-io/terratest/modules/random"
 	"github.com/gruntwork-io/terratest/modules/terraform"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTerraform(t *testing.T) {
@@ -15,7 +16,7 @@ func TestTerraform(t *testing.T) {
 
 	region := aws.GetRandomStableRegion(t, nil, nil)
 	uniqueID := strings.ToLower(random.UniqueId())
-	stateBucket := fmt.Sprintf("%s%s-terratest", uniqueID, uniqueID)
+	stateBucket := fmt.Sprintf("%s-terratest", uniqueID)
 	key := fmt.Sprintf("%s/terraform.tfstate", uniqueID)
 
 	defer cleanUpStateBucket(t, region, stateBucket)
@@ -52,8 +53,18 @@ func TestTerraform(t *testing.T) {
 	})
 
 	defer terraform.Destroy(t, terraformOptions)
-
 	terraform.InitAndApply(t, terraformOptions)
+
+	// contents := aws.GetS3ObjectContents(t, region, stateBucket, key)
+	// require.Contains(t, contents, uniqueID)
+
+	bucketID := terraform.Output(t, terraformOptions, "bucket_id")
+
+	actualStatus := aws.GetS3BucketVersioning(t, region, bucketID)
+	expectedStatus := "Enabled"
+	assert.Equal(t, expectedStatus, actualStatus)
+
+	aws.AssertS3BucketPolicyExists(t, region, bucketID)
 }
 
 func cleanUpStateBucket(t *testing.T, region string, stateBucket string) {

@@ -52,7 +52,7 @@ resource "aws_instance" "valheim" {
   instance_type = var.instance_type
   user_data = templatefile("${path.module}/local/userdata.sh", {
     username = local.username
-    bucket   = aws_s3_bucket.valheim.id
+    bucket   = local.bucket_id
   })
   iam_instance_profile = aws_iam_instance_profile.valheim.name
   vpc_security_group_ids = [
