@@ -1,9 +1,9 @@
 SHELL := /bin/bash
 ROOT=${PWD}
 
-all: install fmt check validate test docs clean
-
 ci: check validate test
+
+all: install fmt check validate test docs clean
 
 install:
 	brew bundle \
