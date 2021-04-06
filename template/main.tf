@@ -13,3 +13,11 @@ module "main" {
   purpose          = var.purpose
   unique_id        = var.unique_id
 }
+
+output "monitoring_url" {
+  value = module.main.monitoring_url
+}
+
+output "valheim_user_passwords" {
+  value = module.main.valheim_user_passwords
+}

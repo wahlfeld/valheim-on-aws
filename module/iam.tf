@@ -113,7 +113,8 @@ resource "aws_iam_policy" "valheim_users" {
           "ec2:DescribeInstanceStatus",
           "ec2:DescribeInstances",
           "ec2:DescribeKeyPairs",
-          "ec2:DescribeNetworkInterfaces"
+          "ec2:DescribeNetworkInterfaces",
+          "iam:ChangePassword"
         ]
         Resource : "*"
       }

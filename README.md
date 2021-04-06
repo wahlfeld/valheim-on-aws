@@ -6,6 +6,7 @@
 - don't include empty keys in admin list
 - fix shellcheck and terraform docs pre commit
 - consider not using bucket prevent_destroy to simplify code
+- use checkov or terraform-compliance?
 
 ## Install dependencies
 `make install`
