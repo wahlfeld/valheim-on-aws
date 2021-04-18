@@ -1,26 +1,24 @@
-#tfsec:ignore:AWS002 tfsec:ignore:AWS017
+#tfsec:ignore:AWS002
 resource "aws_s3_bucket" "valheim" {
-  count = var.purpose != "test" ? 1 : 0
-
+  #checkov:skip=CKV_AWS_18:Access logging is an extra cost and unecessary for this implementation
+  #checkov:skip=CKV_AWS_144:Cross-region replication is an extra cost and unecessary for this implementation
+  #checkov:skip=CKV_AWS_52:MFA delete is unecessary for this implementation
   bucket = "wahlfeld-${local.name}"
   acl    = "private"
-  tags   = merge(local.tags, {})
+  tags   = local.tags
   versioning { enabled = true }
-  lifecycle { prevent_destroy = true }
-}
 
-#tfsec:ignore:AWS002 tfsec:ignore:AWS017
-resource "aws_s3_bucket" "valheim_test" {
-  count = var.purpose == "test" ? 1 : 0
-
-  bucket = "wahlfeld-${local.name}"
-  acl    = "private"
-  tags   = merge(local.tags, {})
-  versioning { enabled = true }
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        sse_algorithm = "aws:kms"
+      }
+    }
+  }
 }
 
 resource "aws_s3_bucket_policy" "valheim" {
-  bucket = local.bucket_id
+  bucket = aws_s3_bucket.valheim.id
   policy = jsonencode({
     Version : "2012-10-17",
     Id : "PolicyForValheimBackups",
@@ -35,35 +33,35 @@ resource "aws_s3_bucket_policy" "valheim" {
           "s3:Get*",
           "s3:List*"
         ],
-        Resource : "arn:aws:s3:::${local.bucket_id}/*"
+        Resource : "arn:aws:s3:::${aws_s3_bucket.valheim.id}/*"
       }
     ]
   })
 }
 
 resource "aws_s3_bucket_object" "install_valheim" {
-  bucket         = local.bucket_id
+  bucket         = aws_s3_bucket.valheim.id
   key            = "/install_valheim.sh"
   content_base64 = base64encode(templatefile("${path.module}/local/install_valheim.sh", { username = local.username }))
   etag           = filemd5("${path.module}/local/install_valheim.sh")
 }
 
 resource "aws_s3_bucket_object" "bootstrap_valheim" {
-  bucket = local.bucket_id
+  bucket = aws_s3_bucket.valheim.id
   key    = "/bootstrap_valheim.sh"
   content_base64 = base64encode(templatefile("${path.module}/local/bootstrap_valheim.sh", {
     username = local.username
-    bucket   = local.bucket_id
+    bucket   = aws_s3_bucket.valheim.id
   }))
   etag = filemd5("${path.module}/local/bootstrap_valheim.sh")
 }
 
 resource "aws_s3_bucket_object" "start_valheim" {
-  bucket = local.bucket_id
+  bucket = aws_s3_bucket.valheim.id
   key    = "/start_valheim.sh"
   content_base64 = base64encode(templatefile("${path.module}/local/start_valheim.sh", {
     username        = local.username
-    bucket          = local.bucket_id
+    bucket          = aws_s3_bucket.valheim.id
     use_domain      = var.domain != "" ? true : false
     world_name      = var.world_name
     server_name     = var.server_name
@@ -73,31 +71,31 @@ resource "aws_s3_bucket_object" "start_valheim" {
 }
 
 resource "aws_s3_bucket_object" "backup_valheim" {
-  bucket = local.bucket_id
+  bucket = aws_s3_bucket.valheim.id
   key    = "/backup_valheim.sh"
   content_base64 = base64encode(templatefile("${path.module}/local/backup_valheim.sh", {
     username = local.username
-    bucket   = local.bucket_id
+    bucket   = aws_s3_bucket.valheim.id
   }))
   etag = filemd5("${path.module}/local/backup_valheim.sh")
 }
 
 resource "aws_s3_bucket_object" "crontab" {
-  bucket         = local.bucket_id
+  bucket         = aws_s3_bucket.valheim.id
   key            = "/crontab"
   content_base64 = base64encode(templatefile("${path.module}/local/crontab", { username = local.username }))
   etag           = filemd5("${path.module}/local/crontab")
 }
 
 resource "aws_s3_bucket_object" "valheim_service" {
-  bucket         = local.bucket_id
+  bucket         = aws_s3_bucket.valheim.id
   key            = "/valheim.service"
   content_base64 = base64encode(templatefile("${path.module}/local/valheim.service", { username = local.username }))
   etag           = filemd5("${path.module}/local/valheim.service")
 }
 
 resource "aws_s3_bucket_object" "admin_list" {
-  bucket         = local.bucket_id
+  bucket         = aws_s3_bucket.valheim.id
   key            = "/adminlist.txt"
   content_base64 = base64encode(templatefile("${path.module}/local/adminlist.txt", { admins = values(var.admins) }))
   etag           = filemd5("${path.module}/local/adminlist.txt")
@@ -106,7 +104,7 @@ resource "aws_s3_bucket_object" "admin_list" {
 resource "aws_s3_bucket_object" "update_cname_json" {
   count = var.domain != "" ? 1 : 0
 
-  bucket         = local.bucket_id
+  bucket         = aws_s3_bucket.valheim.id
   key            = "/update_cname.json"
   content_base64 = base64encode(templatefile("${path.module}/local/update_cname.json", { fqdn = format("%s%s", "valheim.", var.domain) }))
   etag           = filemd5("${path.module}/local/update_cname.json")
@@ -115,18 +113,18 @@ resource "aws_s3_bucket_object" "update_cname_json" {
 resource "aws_s3_bucket_object" "update_cname" {
   count = var.domain != "" ? 1 : 0
 
-  bucket = local.bucket_id
+  bucket = aws_s3_bucket.valheim.id
   key    = "/update_cname.sh"
   content_base64 = base64encode(templatefile("${path.module}/local/update_cname.sh", {
     username   = local.username
     aws_region = var.aws_region
-    bucket     = local.bucket_id
+    bucket     = aws_s3_bucket.valheim.id
     zone_id    = data.aws_route53_zone.selected[0].zone_id
   }))
   etag = filemd5("${path.module}/local/update_cname.sh")
 }
 
 output "bucket_id" {
-  value       = local.bucket_id
+  value       = aws_s3_bucket.valheim.id
   description = "The S3 bucket name"
 }

@@ -1,9 +1,9 @@
 SHELL := /bin/bash
 ROOT=${PWD}
 
-ci: validate test check
+ci: validate check test
 
-all: install fmt validate test check docs clean
+all: fmt validate check test docs clean
 
 install:
 	brew bundle \
@@ -15,9 +15,10 @@ fmt:
 	terraform fmt --recursive -no-color
 
 check:
-	pre-commit run -a
+	pre-commit run -a \
+	&& checkov --directory ${ROOT}/module
 
-validate:
+validate: clean
 	cd ${ROOT}/template \
 		&& terraform init --backend=false -no-color && terraform validate -no-color
 

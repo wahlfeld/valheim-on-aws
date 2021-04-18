@@ -13,7 +13,7 @@ resource "aws_iam_role" "valheim" {
       }
     ]
   })
-  tags = merge(local.tags, {})
+  tags = local.tags
 }
 
 resource "aws_iam_instance_profile" "valheim" {
@@ -34,8 +34,8 @@ resource "aws_iam_policy" "valheim" {
           "s3:List*"
         ],
         Resource : [
-          "arn:aws:s3:::${local.bucket_id}",
-          "arn:aws:s3:::${local.bucket_id}/"
+          "arn:aws:s3:::${aws_s3_bucket.valheim.id}",
+          "arn:aws:s3:::${aws_s3_bucket.valheim.id}/"
         ]
       },
       {
@@ -133,7 +133,7 @@ resource "aws_iam_user" "valheim_user" {
   name          = each.key
   path          = "/"
   force_destroy = true
-  tags          = merge(local.tags, {})
+  tags          = local.tags
 }
 
 resource "aws_iam_user_login_profile" "valheim_user" {

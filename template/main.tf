@@ -18,6 +18,14 @@ output "monitoring_url" {
   value = module.main.monitoring_url
 }
 
+output "bucket_id" {
+  value = module.main.bucket_id
+}
+
+output "instance_id" {
+  value = module.main.instance_id
+}
+
 output "valheim_user_passwords" {
   value = module.main.valheim_user_passwords
 }

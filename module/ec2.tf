@@ -48,16 +48,21 @@ data "aws_ami" "ubuntu" {
 }
 
 resource "aws_instance" "valheim" {
+  #checkov:skip=CKV_AWS_126:Detailed monitoring is an extra cost and unecessary for this implementation
+  #checkov:skip=CKV_AWS_8:This is not a launch configuration
   ami           = data.aws_ami.ubuntu.id
   instance_type = var.instance_type
+  ebs_optimized = true
   user_data = templatefile("${path.module}/local/userdata.sh", {
     username = local.username
-    bucket   = local.bucket_id
+    bucket   = aws_s3_bucket.valheim.id
   })
-  iam_instance_profile = aws_iam_instance_profile.valheim.name
-  vpc_security_group_ids = [
-    aws_security_group.ingress.id
-  ]
+  iam_instance_profile   = aws_iam_instance_profile.valheim.name
+  vpc_security_group_ids = [aws_security_group.ingress.id]
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+  }
   tags = merge(local.tags,
     {
       "Name"        = "${local.name}-server"

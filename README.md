@@ -5,8 +5,7 @@
 - write usage section
 - don't include empty keys in admin list
 - fix shellcheck and terraform docs pre commit
-- consider not using bucket prevent_destroy to simplify code
-- use checkov or terraform-compliance?
+- test cron, scripts exist, valheim started, ports open, s3 access
 
 ## Install dependencies
 `make install`

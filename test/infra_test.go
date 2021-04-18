@@ -1,7 +1,9 @@
 package test
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -9,9 +11,11 @@ import (
 	"github.com/gruntwork-io/terratest/modules/aws"
 	"github.com/gruntwork-io/terratest/modules/random"
 	"github.com/gruntwork-io/terratest/modules/terraform"
-	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	http_helper "github.com/gruntwork-io/terratest/modules/http-helper"
+	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
 var uniqueID string = strings.ToLower(random.UniqueId())
@@ -21,7 +25,7 @@ var key string = fmt.Sprintf("%s/terraform.tfstate", uniqueID)
 func TestTerraform(t *testing.T) {
 	t.Parallel()
 
-	workingDir := "./"
+	workingDir := "../template"
 	region := aws.GetRandomStableRegion(t, nil, nil)
 
 	defer test_structure.RunTestStage(t, "teardown_state_bucket", func() {
@@ -77,6 +81,38 @@ func TestTerraform(t *testing.T) {
 		require.Equal(t, "", result.Stdout)
 		require.Equal(t, int64(1), result.ExitCode)
 	})
+
+	test_structure.RunTestStage(t, "check_monitoring", func() {
+		terraformOptions := test_structure.LoadTerraformOptions(t, workingDir)
+
+		monitoringURL := terraform.Output(t, terraformOptions, "monitoring_url")
+
+		maxRetries := 60
+		timeBetweenRetries := 5 * time.Second
+
+		validateResponse(t, monitoringURL, maxRetries, timeBetweenRetries)
+	})
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// Broken
+	// e.g.
+	// Messages: failed to execute 'systemctl is-active --quiet valheim' on i-0b9eb91370e85ec5f (Failed):]
+	// stdout: ""
+	// stderr: "failed to run commands: exit status 3"
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// test_structure.RunTestStage(t, "check_valheim_service", func() {
+	// 	terraformOptions := test_structure.LoadTerraformOptions(t, workingDir)
+
+	// 	instanceID := terraform.Output(t, terraformOptions, "instance_id")
+	// 	timeout := 3 * time.Minute
+
+	// 	aws.WaitForSsmInstance(t, region, instanceID, timeout)
+
+	// 	result := aws.CheckSsmCommand(t, region, instanceID, "systemctl is-active --quiet valheim", timeout)
+	// 	require.Equal(t, result.Stdout, "")
+	// 	require.Equal(t, result.Stderr, "")
+	// 	require.Equal(t, int64(0), result.ExitCode)
+	// })
 }
 
 func deployUsingTerraform(t *testing.T, region string, workingDir string) {
@@ -123,4 +159,10 @@ func undeployUsingTerraform(t *testing.T, workingDir string) {
 func cleanUpStateBucket(t *testing.T, region string, stateBucket string) {
 	aws.EmptyS3Bucket(t, region, stateBucket)
 	aws.DeleteS3Bucket(t, region, stateBucket)
+}
+
+func validateResponse(t *testing.T, address string, maxRetries int, timeBetweenRetries time.Duration) {
+	http_helper.HttpGetWithRetryWithCustomValidation(t, address, &tls.Config{InsecureSkipVerify: true}, maxRetries, timeBetweenRetries, func(status int, body string) bool {
+		return status == http.StatusOK
+	})
 }

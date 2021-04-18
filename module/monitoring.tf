@@ -1,7 +1,8 @@
 #tfsec:ignore:AWS016
 resource "aws_sns_topic" "valheim" {
+  #checkov:skip=CKV_AWS_26:CloudWatch can't publish messages to encrypted topics - https://aws.amazon.com/premiumsupport/knowledge-center/cloudwatch-receive-sns-for-alarm-trigger/
   name = "${local.name}-status"
-  tags = merge(local.tags, {})
+  tags = local.tags
 }
 
 resource "aws_sns_topic_subscription" "valheim" {
@@ -12,8 +13,8 @@ resource "aws_sns_topic_subscription" "valheim" {
 
 data "aws_caller_identity" "current" {}
 
-resource "aws_cloudwatch_metric_alarm" "valheim_stopping" {
-  alarm_name          = "${local.name}-stopping"
+resource "aws_cloudwatch_metric_alarm" "valheim_stopped" {
+  alarm_name          = "${local.name}-stopped"
   alarm_description   = "Will stop the Valheim server after a period of inactivity"
   comparison_operator = "LessThanThreshold"
   datapoints_to_alarm = "3"
@@ -28,11 +29,11 @@ resource "aws_cloudwatch_metric_alarm" "valheim_stopping" {
     "arn:aws:swf:${var.aws_region}:${data.aws_caller_identity.current.account_id}:action/actions/AWS_EC2.InstanceId.Stop/1.0",
   ]
   dimensions = { "InstanceId" = aws_instance.valheim.id }
-  tags       = merge(local.tags, {})
+  tags       = local.tags
 }
 
-resource "aws_cloudwatch_event_rule" "valheim_starting" {
-  name        = "${local.name}-starting"
+resource "aws_cloudwatch_event_rule" "valheim_started" {
+  name        = "${local.name}-started"
   description = "Used to trigger notifications when the Valheim server starts"
   event_pattern = jsonencode({
     source : ["aws.ec2"],
@@ -42,11 +43,11 @@ resource "aws_cloudwatch_event_rule" "valheim_starting" {
       "instance-id" : [aws_instance.valheim.id]
     }
   })
-  tags = merge(local.tags, {})
+  tags = local.tags
 }
 
-resource "aws_cloudwatch_event_target" "valheim_starting" {
-  rule      = aws_cloudwatch_event_rule.valheim_starting.name
+resource "aws_cloudwatch_event_target" "valheim_started" {
+  rule      = aws_cloudwatch_event_rule.valheim_started.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.valheim.arn
   input_transformer {
