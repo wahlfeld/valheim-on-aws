@@ -1,4 +1,4 @@
-# valheim-on-aws
+# (broken) valheim-on-aws
 
 ## Why does this project exist?
 
@@ -61,10 +61,30 @@ valheim-on-aws           // (this project)
 
 ### Monitoring
 
-To view server monitoring metrics visit the `monitoring_url` output from Terraform after
-deploying. Note that this URL will change every time the server starts unless
-you're using your own domain in AWS. In this case I find it's easier to just
-take note of the public IP address when you turn the server on.
+To view server monitoring metrics visit the `monitoring_url` output from
+Terraform after deploying. Note that this URL will change every time the server
+starts unless you're using your own domain in AWS. In this case I find it's
+easier to just take note of the public IP address when you turn the server on.
+
+### Timings
+
+* It usually takes around 1 minute for Terraform to deploy all the components
+* Upon the first deployment the server will take 5-10 minutes to become ready
+* Subsequent starts will take 2-3 minutes before appearing on the server browser
+
+### Backups
+
+The server logic around backups is as follows:
+
+1. Check if world files exist locally and if so start the server using those
+2. If no files exist, try to fetch from backup store and use those
+3. If no backup files exist, create a new world and start the server
+4. Five minutes after the server has started perform a backup
+5. Perform backups every hour after boot
+
+### Restores
+
+todo
 
 ## Infracost
 
@@ -109,7 +129,8 @@ Source: Infracost v0.8.5 `infracost breakdown --path . --show-skipped
 
 ## Install dependencies
 
-Currently this installs more than required to run the code, however doesn't include AWS CLI.
+Currently this installs more than required to run the code, however doesn't
+include AWS CLI.
 
 `make install`
 
@@ -118,11 +139,11 @@ Currently this installs more than required to run the code, however doesn't incl
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_admins"></a> [admins](#input\_admins) | List of Valheim server admins (use their SteamID) | `map(any)` | `{}` | no |
+| <a name="input_admins"></a> [admins](#input\_admins) | List of AWS users/Valheim server admins (use their SteamID) | `map(any)` | <pre>{<br>  "default_valheim_user": ""<br>}</pre> | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | The AWS region to create the Valheim server | `string` | n/a | yes |
 | <a name="input_domain"></a> [domain](#input\_domain) | Domain name used to create a static monitoring URL | `string` | `""` | no |
 | <a name="input_instance_type"></a> [instance\_type](#input\_instance\_type) | AWS EC2 instance type to run the server on (t3a.medium is the minimum size) | `string` | `"t3a.medium"` | no |
-| <a name="input_keybase_username"></a> [keybase\_username](#input\_keybase\_username) | The Keybase username to encrypt AWS user passwords with | `string` | n/a | yes |
+| <a name="input_keybase_username"></a> [keybase\_username](#input\_keybase\_username) | The Keybase username to encrypt AWS user passwords with | `string` | `"marypoppins"` | no |
 | <a name="input_purpose"></a> [purpose](#input\_purpose) | The purpose of the deployment | `string` | `"prod"` | no |
 | <a name="input_server_name"></a> [server\_name](#input\_server\_name) | The server name | `string` | n/a | yes |
 | <a name="input_server_password"></a> [server\_password](#input\_server\_password) | The server password | `string` | n/a | yes |
@@ -192,6 +213,9 @@ module.main.aws_sns_topic_subscription.valheim
 
 ## todo
 
+- Fix bug where server cannot start if no world files exist locally or remotely
+- Add docs on performing restores
 - Don't include empty keys in admin list
 - Fix shellcheck and terraform docs pre commit
-- Test cron, scripts exist, valheim started, ports open, s3 access
+- Fix tests e.g. cron, scripts exist, valheim started, ports open, s3 access, etc
+- Add remote build e.g. CircleCI, GitHub Actions, Drone, etc incl. status badge to readme

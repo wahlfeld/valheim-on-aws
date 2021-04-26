@@ -125,6 +125,5 @@ resource "aws_s3_bucket_object" "update_cname" {
 }
 
 output "bucket_id" {
-  value       = aws_s3_bucket.valheim.id
-  description = "The S3 bucket name"
+  value = aws_s3_bucket.valheim.id
 }

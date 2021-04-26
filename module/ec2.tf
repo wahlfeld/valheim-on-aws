@@ -83,6 +83,5 @@ resource "aws_instance" "valheim" {
 }
 
 output "instance_id" {
-  value       = aws_instance.valheim.id
-  description = "The EC2 instance ID"
+  value = aws_instance.valheim.id
 }

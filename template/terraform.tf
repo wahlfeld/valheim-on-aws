@@ -3,7 +3,7 @@ terraform {
 
   backend "s3" {
     # bucket = "CHANGEME"
-    # key    = "valheim-server/terraform.tfstate"
+    # key    = "valheim-server/prod/terraform.tfstate"
     # region = "CHANGEME"
   }
 

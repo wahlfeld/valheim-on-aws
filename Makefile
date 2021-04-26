@@ -30,7 +30,7 @@ test: clean
 		&& go test -v -timeout 10m
 
 docs:
-	terraform-docs markdown ${ROOT}/module --output-file ../README.md --hide modules --hide resources --hide requirements --hide providers
+	terraform-docs markdown ${ROOT}/template --output-file ../README.md --hide modules --hide resources --hide requirements --hide providers
 
 clean:
 	for i in $$(find . -iname '.terraform' -o -iname '*.lock.*' -o -iname '*.tfstate*' -o -iname '.test-data'); do rm -rf $$i; done
