@@ -1,0 +1,52 @@
+name: 'ci'
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+
+jobs:
+  ci:
+    name: 'ci'
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Install go
+      uses: actions/setup-go@v2
+      with:
+        go-version: '^1.14.0'
+
+    - name: Install pre-commmit
+      uses: pre-commit/action@v2.0.2
+      
+    - name: Install terraform
+    - uses: hashicorp/setup-terraform@v1
+      with:
+        terraform_version: 0.14.10
+        
+    - name: tflint
+      uses: reviewdog/action-tflint@master
+#       with:
+#         github_token: ${{ secrets.github_token }}
+
+    - name: tfsec
+      uses: triat/terraform-security-scan@v2.0.2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: checkov
+      uses: bridgecrewio/checkov-action@master
+
+    - name: ci
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      run: make ci
