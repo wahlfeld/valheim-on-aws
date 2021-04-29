@@ -10,6 +10,7 @@ import (
 
 	"github.com/gruntwork-io/terratest/modules/aws"
 	"github.com/gruntwork-io/terratest/modules/random"
+	"github.com/gruntwork-io/terratest/modules/retry"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -87,54 +88,40 @@ func TestTerraform(t *testing.T) {
 
 		monitoringURL := terraform.Output(t, terraformOptions, "monitoring_url")
 
-		maxRetries := 60
-		timeBetweenRetries := 5 * time.Second
-
-		validateResponse(t, monitoringURL, maxRetries, timeBetweenRetries)
+		validateResponse(t, monitoringURL, 60, 5*time.Second)
 	})
 
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// Broken
-	// e.g.
-	// Messages: failed to execute 'systemctl is-active --quiet valheim' on i-0b9eb91370e85ec5f (Failed):]
-	// stdout: ""
-	// stderr: "failed to run commands: exit status 3"
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// test_structure.RunTestStage(t, "check_valheim_service", func() {
-	// 	terraformOptions := test_structure.LoadTerraformOptions(t, workingDir)
+	test_structure.RunTestStage(t, "check_valheim_service", func() {
+		terraformOptions := test_structure.LoadTerraformOptions(t, workingDir)
 
-	// 	instanceID := terraform.Output(t, terraformOptions, "instance_id")
-	// 	timeout := 3 * time.Minute
+		instanceID := terraform.Output(t, terraformOptions, "instance_id")
+		timeout := 3 * time.Minute
 
-	// 	aws.WaitForSsmInstance(t, region, instanceID, timeout)
+		aws.WaitForSsmInstance(t, region, instanceID, timeout)
 
-	// 	result := aws.CheckSsmCommand(t, region, instanceID, "systemctl is-active --quiet valheim", timeout)
-	// 	require.Equal(t, result.Stdout, "")
-	// 	require.Equal(t, result.Stderr, "")
-	// 	require.Equal(t, int64(0), result.ExitCode)
-	// })
+		retry.DoWithRetry(t, "Checking if Valheim service is running", 25, 6*time.Second, func() (string, error) {
+			out, _ := aws.CheckSsmCommandE(t, region, instanceID, "systemctl is-active valheim", timeout)
+
+			expectedStatus := "active"
+			actualStatus := strings.TrimSpace(out.Stdout)
+
+			if actualStatus != expectedStatus {
+				return "", fmt.Errorf("Expected status to be '%s' but was '%s'", expectedStatus, actualStatus)
+			}
+
+			return "", nil
+		})
+	})
 }
 
 func deployUsingTerraform(t *testing.T, region string, workingDir string) {
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: workingDir,
 		Vars: map[string]interface{}{
-			"aws_region":       region,
-			"domain":           "",
-			"instance_type":    "t3.nano",
-			"keybase_username": "marypoppins",
-			"sns_email":        "fake@email.com",
-			"world_name":       "test-world",
-			"server_name":      "test-server",
-			"server_password":  "test-password",
-			"purpose":          "test",
-			"unique_id":        uniqueID,
-			"admins": map[string]interface{}{
-				"user1": 76561197993928956,
-				"user2": 76561197994340320,
-				"user3": "",
-			},
+			"aws_region": region,
+			"unique_id":  uniqueID,
 		},
+		VarFiles: []string{"../test/varfile.tfvars"},
 		EnvVars: map[string]string{
 			"AWS_DEFAULT_REGION":  region,
 			"AWS_SDK_LOAD_CONFIG": "true",

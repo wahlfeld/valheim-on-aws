@@ -1,4 +1,4 @@
-# (broken) valheim-on-aws
+# valheim-on-aws
 
 ## Why does this project exist?
 
@@ -213,9 +213,9 @@ module.main.aws_sns_topic_subscription.valheim
 
 ## todo
 
-- Fix bug where server cannot start if no world files exist locally or remotely
 - Add docs on performing restores
 - Don't include empty keys in admin list
 - Fix shellcheck and terraform docs pre commit
-- Fix tests e.g. cron, scripts exist, valheim started, ports open, s3 access, etc
+- Fix tests e.g. cron, scripts exist, ports open, s3 access, etc
+- Bake image to reduce build and boot time?
 - Add remote build e.g. CircleCI, GitHub Actions, Drone, etc incl. status badge to readme

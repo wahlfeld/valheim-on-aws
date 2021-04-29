@@ -24,15 +24,19 @@ export templdpath=$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=./linux64:$LD_LIBRARY_PATH
 export SteamAppId=892970
 
-echo "Checking if world exists on local storage"
+echo "Checking if world files exist locally"
 
-test -f /home/${username}/.config/unity3d/IronGate/Valheim/worlds/${world_name}.fwl || 
-    { echo "No world .fwl file found on local storage, downloading most recent backup" ;
-    aws s3 cp s3://${bucket}/${world_name}.fwl /home/${username}/.config/unity3d/IronGate/Valheim/worlds/${world_name}.fwl ; }
-
-test -f /home/${username}/.config/unity3d/IronGate/Valheim/worlds/${world_name}.db || 
-    { echo "No world .db file found on local storage, downloading most recent backup" ;
-    aws s3 cp s3://${bucket}/${world_name}.db /home/${username}/.config/unity3d/IronGate/Valheim/worlds/${world_name}.db ; }
+if [ ! -f "/home/${username}/.config/unity3d/IronGate/Valheim/worlds/${world_name}.fwl" ]; then
+    echo "No world files found locally, checking if backups exist"
+    BACKUPS=$(aws s3api head-object --bucket ${bucket} --key "${world_name}.fwl" || true > /dev/null 2>&1)
+    if [ -z "$${BACKUPS}" ]; then 
+        echo "No backups found using world name \"${world_name}\". A new world will be created."
+    else 
+        echo "Backups found, restoring..."
+        aws s3 cp "s3://${bucket}/${world_name}.fwl" "/home/${username}/.config/unity3d/IronGate/Valheim/worlds/${world_name}.fwl"
+        aws s3 cp "s3://${bucket}/${world_name}.db" "/home/${username}/.config/unity3d/IronGate/Valheim/worlds/${world_name}.db"
+    fi
+fi
 
 echo "Syncing admin list"
 
@@ -40,9 +44,6 @@ aws s3 cp s3://${bucket}/adminlist.txt /home/${username}/.config/unity3d/IronGat
 
 echo "Starting server PRESS CTRL-C to exit"
 
-# Tip: Make a local copy of this script to avoid it being overwritten by steam.
-# NOTE: Minimum password length is 5 characters & Password cant be in the server name.
-# NOTE: You need to make sure the ports 2456-2458 is being forwarded to your server through your local router & firewall.
 ./valheim_server.x86_64 -name "${server_name}" -port 2456 -world "${world_name}" -password ${server_password} -batchmode -nographics -public 1
 
 export LD_LIBRARY_PATH=$templdpath

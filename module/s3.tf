@@ -3,9 +3,9 @@ resource "aws_s3_bucket" "valheim" {
   #checkov:skip=CKV_AWS_18:Access logging is an extra cost and unecessary for this implementation
   #checkov:skip=CKV_AWS_144:Cross-region replication is an extra cost and unecessary for this implementation
   #checkov:skip=CKV_AWS_52:MFA delete is unecessary for this implementation
-  bucket = "wahlfeld-${local.name}"
-  acl    = "private"
-  tags   = local.tags
+  bucket_prefix = local.name
+  acl           = "private"
+  tags          = local.tags
   versioning { enabled = true }
 
   server_side_encryption_configuration {

@@ -1,9 +1,9 @@
 SHELL := /bin/bash
 ROOT=${PWD}
 
-ci: validate check test
+ci: validate test check
 
-all: fmt validate check test docs clean
+all: fmt validate test check docs clean
 
 install:
 	brew bundle \
@@ -12,7 +12,7 @@ install:
 	&& npm install -g markdown-link-check
 
 fmt:
-	terraform fmt --recursive -no-color
+	terraform fmt --recursive
 
 check:
 	pre-commit run -a \
@@ -20,14 +20,14 @@ check:
 
 validate: clean
 	cd ${ROOT}/template \
-		&& terraform init --backend=false -no-color && terraform validate -no-color
+		&& terraform init --backend=false && terraform validate
 
 test: clean	
 	cd ${ROOT}/test \
 		&& rm -rf ${ROOT}/test/go.* \
 		&& go mod init test \
 		&& go mod tidy \
-		&& go test -v -timeout 10m
+		&& go test -v -timeout 30m
 
 docs:
 	terraform-docs markdown ${ROOT}/template --output-file ../README.md --hide modules --hide resources --hide requirements --hide providers
