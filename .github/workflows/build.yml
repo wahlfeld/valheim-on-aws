@@ -1,0 +1,73 @@
+name: 'build'
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+
+jobs:
+  build:
+    name: 'Test Terraform and run checks'
+    runs-on: ubuntu-20.04
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - uses: actions/checkout@v1
+
+    - name: 'Get dependencies'
+      env:
+        TERRAFORM_VERSION: 0.14.10
+        GO_VERSION: 1.16.3
+        TFSEC_VERSION: 0.39.29
+      run: |
+        ### Terraform ###
+        wget https://releases.hashicorp.com/terraform/"${TERRAFORM_VERSION}"/terraform_"${TERRAFORM_VERSION}"_linux_amd64.zip
+        unzip terraform_"${TERRAFORM_VERSION}"_linux_amd64.zip
+        sudo mv terraform /usr/local/bin
+
+        ### Go ###
+        wget https://golang.org/dl/go"${GO_VERSION}".linux-amd64.tar.gz
+        sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go"${GO_VERSION}".linux-amd64.tar.gz
+        export PATH=$PATH:/usr/local/go/bin
+
+        ### Pre-commit ###
+        sudo apt update
+        sudo apt install python3-pip
+        pip install pre-commit
+
+        sudo apt install golang-golang-x-tools
+
+        sudo apt install golint
+
+        ### tfsec ###
+        wget https://github.com/tfsec/tfsec/releases/download/v"${TFSEC_VERSION}"/tfsec-checkgen-linux-amd64
+        sudo chmod +x tfsec-checkgen-linux-amd64
+        sudo mv tfsec-checkgen-linux-amd64 /usr/local/bin/tfsec
+
+        sudo apt install software-properties-common
+        sudo add-apt-repository ppa:deadsnakes/ppa
+        sudo apt install python3.7
+        sudo python3.7 -m pip install -U checkov
+
+        curl https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+
+        sudo apt install nodejs npm
+        sudo npm install -g markdown-link-check
+
+    - name: 'make ci'
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      run: |
+        make ci
+
+    - name: Setup tmate session
+      if: ${{ failure() }}
+      uses: mxschmitt/action-tmate@v3
+      timeout-minutes: 10
+      with:
+        limit-access-to-actor: true

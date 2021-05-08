@@ -1,5 +1,7 @@
 # valheim-on-aws
 
+[![build](https://github.com/wahlfeld/valheim-on-aws/actions/workflows/build.yml/badge.svg)](https://github.com/wahlfeld/valheim-on-aws/actions/workflows/build.yml)
+
 ## Why does this project exist?
 
 This project exists because I wanted a cheaper and more efficient way to host a
@@ -216,6 +218,4 @@ module.main.aws_sns_topic_subscription.valheim
 - Add docs on performing restores
 - Don't include empty keys in admin list
 - Fix shellcheck and terraform docs pre commit
-- Fix tests e.g. cron, scripts exist, ports open, s3 access, etc
-- Bake image to reduce build and boot time?
-- Add remote build e.g. CircleCI, GitHub Actions, Drone, etc incl. status badge to readme
+- Add tests e.g. cron, scripts exist, ports open, s3 access, etc
