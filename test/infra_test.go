@@ -20,7 +20,7 @@ import (
 )
 
 var uniqueID string = strings.ToLower(random.UniqueId())
-var stateBucket string = fmt.Sprintf("%s-terratest", uniqueID)
+var stateBucket string = fmt.Sprintf("%s-terratest-valheim", uniqueID)
 var key string = fmt.Sprintf("%s/terraform.tfstate", uniqueID)
 
 func TestTerraform(t *testing.T) {
@@ -88,7 +88,7 @@ func TestTerraform(t *testing.T) {
 
 		monitoringURL := terraform.Output(t, terraformOptions, "monitoring_url")
 
-		validateResponse(t, monitoringURL, 60, 5*time.Second)
+		validateResponse(t, monitoringURL, 20, 5*time.Second)
 	})
 
 	test_structure.RunTestStage(t, "check_valheim_service", func() {
@@ -99,7 +99,7 @@ func TestTerraform(t *testing.T) {
 
 		aws.WaitForSsmInstance(t, region, instanceID, timeout)
 
-		retry.DoWithRetry(t, "Checking if Valheim service is running", 25, 6*time.Second, func() (string, error) {
+		retry.DoWithRetry(t, "Checking if Valheim service is running", 40, 5*time.Second, func() (string, error) {
 			out, _ := aws.CheckSsmCommandE(t, region, instanceID, "systemctl is-active valheim", timeout)
 
 			expectedStatus := "active"
@@ -120,6 +120,11 @@ func deployUsingTerraform(t *testing.T, region string, workingDir string) {
 		Vars: map[string]interface{}{
 			"aws_region": region,
 			"unique_id":  uniqueID,
+			"admins": map[string]interface{}{
+				fmt.Sprintf("%s-testuser1", uniqueID): 76561197993928956,
+				fmt.Sprintf("%s-testuser2", uniqueID): 76561197994340320,
+				fmt.Sprintf("%s-testuser3", uniqueID): "",
+			},
 		},
 		VarFiles: []string{"../test/varfile.tfvars"},
 		EnvVars: map[string]string{

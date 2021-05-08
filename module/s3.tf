@@ -37,6 +37,18 @@ resource "aws_s3_bucket_policy" "valheim" {
       }
     ]
   })
+
+  // https://github.com/hashicorp/terraform-provider-aws/issues/7628
+  depends_on = [aws_s3_bucket_public_access_block.valheim]
+}
+
+resource "aws_s3_bucket_public_access_block" "valheim" {
+  bucket = aws_s3_bucket.valheim.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
 resource "aws_s3_bucket_object" "install_valheim" {
