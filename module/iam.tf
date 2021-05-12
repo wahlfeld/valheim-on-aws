@@ -128,6 +128,7 @@ resource "aws_iam_group_policy_attachment" "valheim_users" {
 }
 
 resource "aws_iam_user" "valheim_user" {
+  #checkov:skip=CKV2_AWS_22:We want users to be able to access the console
   for_each = var.admins
 
   name          = each.key
