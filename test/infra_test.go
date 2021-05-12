@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gruntwork-io/terratest/modules/aws"
+	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/random"
 	"github.com/gruntwork-io/terratest/modules/retry"
 	"github.com/gruntwork-io/terratest/modules/terraform"
@@ -22,6 +23,7 @@ import (
 var uniqueID string = strings.ToLower(random.UniqueId())
 var stateBucket string = fmt.Sprintf("%s-terratest-valheim", uniqueID)
 var key string = fmt.Sprintf("%s/terraform.tfstate", uniqueID)
+var l *logger.Logger
 
 func TestTerraform(t *testing.T) {
 	t.Parallel()
@@ -35,6 +37,10 @@ func TestTerraform(t *testing.T) {
 
 	defer test_structure.RunTestStage(t, "teardown_terraform", func() {
 		undeployUsingTerraform(t, workingDir)
+	})
+
+	defer test_structure.RunTestStage(t, "logs", func() {
+		fetchSyslogForInstance(t, region, workingDir)
 	})
 
 	test_structure.RunTestStage(t, "create_state_bucket", func() {
@@ -99,7 +105,7 @@ func TestTerraform(t *testing.T) {
 
 		aws.WaitForSsmInstance(t, region, instanceID, timeout)
 
-		retry.DoWithRetry(t, "Checking if Valheim service is running", 40, 5*time.Second, func() (string, error) {
+		retry.DoWithRetry(t, "Checking if Valheim service is running", 50, 5*time.Second, func() (string, error) {
 			out, _ := aws.CheckSsmCommandE(t, region, instanceID, "systemctl is-active valheim", timeout)
 
 			expectedStatus := "active"
@@ -157,4 +163,13 @@ func validateResponse(t *testing.T, address string, maxRetries int, timeBetweenR
 	http_helper.HttpGetWithRetryWithCustomValidation(t, address, &tls.Config{InsecureSkipVerify: true}, maxRetries, timeBetweenRetries, func(status int, body string) bool {
 		return status == http.StatusOK
 	})
+}
+
+func fetchSyslogForInstance(t *testing.T, awsRegion string, workingDir string) {
+	terraformOptions := test_structure.LoadTerraformOptions(t, workingDir)
+
+	instanceID := terraform.OutputRequired(t, terraformOptions, "instance_id")
+	logs := aws.GetSyslogForInstance(t, instanceID, awsRegion)
+
+	l.Logf(t, "Most recent syslog for Instance %s:\n\n%s\n", instanceID, logs)
 }
