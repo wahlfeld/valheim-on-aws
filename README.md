@@ -219,3 +219,4 @@ module.main.aws_sns_topic_subscription.valheim
 - Don't include empty keys in admin list
 - Fix shellcheck and terraform docs pre commit
 - Add tests e.g. cron, scripts exist, ports open, s3 access, etc
+- Add support for spot instances
