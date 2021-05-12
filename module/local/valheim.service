@@ -16,3 +16,4 @@ WorkingDirectory=/home/${username}/valheim
 ExecStartPre=/home/${username}/steam/steamcmd.sh +login anonymous +force_install_dir /home/${username}/valheim +app_update 896660 +quit
 ExecStart=/home/${username}/valheim/bootstrap_valheim.sh
 KillSignal=SIGINT
+ExecStopPost=/home/${username}/valheim/backup_valheim.sh
