@@ -86,8 +86,9 @@ resource "aws_s3_bucket_object" "backup_valheim" {
   bucket = aws_s3_bucket.valheim.id
   key    = "/backup_valheim.sh"
   content_base64 = base64encode(templatefile("${path.module}/local/backup_valheim.sh", {
-    username = local.username
-    bucket   = aws_s3_bucket.valheim.id
+    username   = local.username
+    bucket     = aws_s3_bucket.valheim.id
+    world_name = var.world_name
   }))
   etag = filemd5("${path.module}/local/backup_valheim.sh")
 }
