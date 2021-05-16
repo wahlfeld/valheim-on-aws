@@ -50,6 +50,7 @@ data "aws_ami" "ubuntu" {
 resource "aws_instance" "valheim" {
   #checkov:skip=CKV_AWS_126:Detailed monitoring is an extra cost and unecessary for this implementation
   #checkov:skip=CKV_AWS_8:This is not a launch configuration
+  #checkov:skip=CKV2_AWS_17:This instance will be placed in the default VPC deliberately
   ami           = data.aws_ami.ubuntu.id
   instance_type = var.instance_type
   ebs_optimized = true

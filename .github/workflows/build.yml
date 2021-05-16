@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    name: 'Test Terraform and run checks'
+    name: 'Run checks and test Terraform'
     runs-on: ubuntu-20.04
 
     defaults:
