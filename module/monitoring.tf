@@ -69,6 +69,7 @@ data "aws_route53_zone" "selected" {
 }
 
 resource "aws_route53_record" "valheim" {
+  #checkov:skip=CKV2_AWS_23:Broken - https://github.com/bridgecrewio/checkov/issues/1359
   count = var.domain != "" ? 1 : 0
 
   zone_id = data.aws_route53_zone.selected[0].zone_id
