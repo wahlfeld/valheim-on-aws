@@ -17,5 +17,11 @@ locals {
     "Component" = "Valheim Server"
     "CreatedBy" = "Terraform"
   }
+  ec2_tags = merge(local.tags,
+    {
+      "Name"        = "${local.name}-server"
+      "Description" = "Instance running a Valheim server"
+    }
+  )
   name = var.purpose != "prod" ? "valheim-${var.purpose}${var.unique_id}" : "valheim"
 }
