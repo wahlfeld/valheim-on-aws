@@ -64,28 +64,21 @@ resource "aws_iam_policy" "valheim_cname" {
   })
 }
 
-resource "aws_iam_policy_attachment" "valheim" {
-  name       = local.name
-  roles      = [aws_iam_role.valheim.name]
+resource "aws_iam_role_policy_attachment" "valheim" {
+  role       = aws_iam_role.valheim.name
   policy_arn = aws_iam_policy.valheim.arn
 }
 
-resource "aws_iam_policy_attachment" "valheim_cname" {
+resource "aws_iam_role_policy_attachment" "valheim_cname" {
   count = var.domain != "" ? 1 : 0
 
-  name       = "${local.name}-cname"
-  roles      = [aws_iam_role.valheim.name]
+  role       = aws_iam_role.valheim.name
   policy_arn = aws_iam_policy.valheim_cname[0].arn
 }
 
-data "aws_iam_policy" "ssm" {
-  arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-}
-
-resource "aws_iam_policy_attachment" "ssm" {
-  name       = "${local.name}-ssm"
-  roles      = [aws_iam_role.valheim.name]
-  policy_arn = data.aws_iam_policy.ssm.arn
+resource "aws_iam_role_policy_attachment" "ssm" {
+  role       = aws_iam_role.valheim.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
 resource "aws_iam_group" "valheim_users" {
