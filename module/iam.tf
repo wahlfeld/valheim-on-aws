@@ -102,7 +102,7 @@ resource "aws_iam_policy" "valheim_users" {
       {
         Effect : "Allow",
         Action : ["ec2:StartInstances"],
-        Resource : aws_instance.valheim.arn,
+        Resource : "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/${aws_spot_instance_request.valheim.spot_instance_id}",
       },
       {
         Effect : "Allow",

@@ -28,7 +28,7 @@ resource "aws_cloudwatch_metric_alarm" "valheim_stopped" {
     aws_sns_topic.valheim.arn,
     "arn:aws:swf:${var.aws_region}:${data.aws_caller_identity.current.account_id}:action/actions/AWS_EC2.InstanceId.Stop/1.0",
   ]
-  dimensions = { "InstanceId" = aws_instance.valheim.id }
+  dimensions = { "InstanceId" = aws_spot_instance_request.valheim.spot_instance_id }
   tags       = local.tags
 }
 
@@ -40,7 +40,7 @@ resource "aws_cloudwatch_event_rule" "valheim_started" {
     "detail-type" : ["EC2 Instance State-change Notification"],
     detail : {
       state : ["pending"],
-      "instance-id" : [aws_instance.valheim.id]
+      "instance-id" : [aws_spot_instance_request.valheim.spot_instance_id]
     }
   })
   tags = local.tags
@@ -76,9 +76,9 @@ resource "aws_route53_record" "valheim" {
   name    = local.name
   type    = "CNAME"
   ttl     = "300"
-  records = [aws_instance.valheim.public_dns]
+  records = [aws_spot_instance_request.valheim.public_dns]
 }
 
 output "monitoring_url" {
-  value = format("%s%s%s", "http://", var.domain != "" ? aws_route53_record.valheim[0].fqdn : aws_instance.valheim.public_dns, ":19999")
+  value = format("%s%s%s", "http://", var.domain != "" ? aws_route53_record.valheim[0].fqdn : aws_spot_instance_request.valheim.public_dns, ":19999")
 }

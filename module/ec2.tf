@@ -1,5 +1,6 @@
 #tfsec:ignore:AWS018
 resource "aws_security_group" "ingress" {
+  #checkov:skip=CKV2_AWS_5:Broken - https://github.com/bridgecrewio/checkov/issues/1203
   tags = merge(local.tags,
     {
       "Name"        = "${local.name}-ingress"
@@ -47,7 +48,7 @@ data "aws_ami" "ubuntu" {
   }
 }
 
-resource "aws_instance" "valheim" {
+resource "aws_spot_instance_request" "valheim" {
   #checkov:skip=CKV_AWS_126:Detailed monitoring is an extra cost and unecessary for this implementation
   #checkov:skip=CKV_AWS_8:This is not a launch configuration
   #checkov:skip=CKV2_AWS_17:This instance will be placed in the default VPC deliberately
@@ -58,18 +59,15 @@ resource "aws_instance" "valheim" {
     username = local.username
     bucket   = aws_s3_bucket.valheim.id
   })
-  iam_instance_profile   = aws_iam_instance_profile.valheim.name
-  vpc_security_group_ids = [aws_security_group.ingress.id]
+  iam_instance_profile           = aws_iam_instance_profile.valheim.name
+  vpc_security_group_ids         = [aws_security_group.ingress.id]
+  wait_for_fulfillment           = true
+  instance_interruption_behavior = "stop"
   metadata_options {
     http_endpoint = "enabled"
     http_tokens   = "required"
   }
-  tags = merge(local.tags,
-    {
-      "Name"        = "${local.name}-server"
-      "Description" = "Instance running a Valheim server"
-    }
-  )
+  tags = local.ec2_tags
 
   depends_on = [
     aws_s3_bucket_object.install_valheim,
@@ -84,5 +82,13 @@ resource "aws_instance" "valheim" {
 }
 
 output "instance_id" {
-  value = aws_instance.valheim.id
+  value = aws_spot_instance_request.valheim.spot_instance_id
+}
+
+resource "aws_ec2_tag" "valheim" {
+  for_each = local.ec2_tags
+
+  resource_id = aws_spot_instance_request.valheim.spot_instance_id
+  key         = each.key
+  value       = each.value
 }
