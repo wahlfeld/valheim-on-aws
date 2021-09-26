@@ -1,12 +1,9 @@
 #tfsec:ignore:AWS018
 resource "aws_security_group" "ingress" {
   #checkov:skip=CKV2_AWS_5:Broken - https://github.com/bridgecrewio/checkov/issues/1203
-  tags = merge(local.tags,
-    {
-      "Name"        = "${local.name}-ingress"
-      "Description" = "Security group allowing inbound traffic to the Valheim server"
-    }
-  )
+  name        = "${local.name}-ingress"
+  description = "Security group allowing inbound traffic to the Valheim server"
+  tags        = local.tags
 }
 
 resource "aws_security_group_rule" "valheim_ingress" {
