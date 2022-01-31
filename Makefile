@@ -22,12 +22,9 @@ validate: clean
 	cd ${ROOT}/template \
 		&& terraform init --backend=false && terraform validate
 
-test: clean	
-	cd ${ROOT}/test \
-		&& rm -rf ${ROOT}/test/go.* \
-		&& go mod init test \
-		&& go mod tidy \
-		&& go test -v -timeout 30m
+test: clean
+	go mod tidy
+	cd $(ROOT)/test && go test -v -timeout 30m
 
 docs:
 	terraform-docs markdown ${ROOT}/template --output-file ../README.md --hide modules --hide resources --hide requirements --hide providers

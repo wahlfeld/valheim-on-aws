@@ -81,6 +81,7 @@ resource "aws_iam_role_policy_attachment" "ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+#tfsec:ignore:aws-iam-enforce-mfa
 resource "aws_iam_group" "valheim_users" {
   name = "${local.name}-users"
   path = "/users/"

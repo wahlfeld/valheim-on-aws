@@ -13,7 +13,9 @@ apt install -y \
     libsdl2-2.0-0:i386 \
     libtool \
 
-bash <(curl -Ss https://my-netdata.io/kickstart-static64.sh) --dont-wait
+cd /tmp
+curl -s https://my-netdata.io/kickstart-static64.sh > kickstart-static64.sh
+bash kickstart-static64.sh --dont-wait
 
 useradd -m ${username}
 su - ${username} -c "mkdir -p /home/${username}/valheim"
