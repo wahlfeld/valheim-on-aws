@@ -11,7 +11,7 @@ resource "aws_security_group_rule" "valheim_ingress" {
   from_port         = 2456
   to_port           = 2458
   protocol          = "udp"
-  cidr_blocks       = ["0.0.0.0/0"] #tfsec:ignore:AWS006
+  cidr_blocks       = ["0.0.0.0/0"] #tfsec:ignore:aws-vpc-no-public-ingress-sgr
   security_group_id = aws_security_group.ingress.id
   description       = "Allows traffic to the Valheim server"
 }
@@ -21,7 +21,7 @@ resource "aws_security_group_rule" "netdata" {
   from_port         = 19999
   to_port           = 19999
   protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"] #tfsec:ignore:AWS006
+  cidr_blocks       = ["0.0.0.0/0"] #tfsec:ignore:aws-vpc-no-public-ingress-sgr
   security_group_id = aws_security_group.ingress.id
   description       = "Allows traffic to the Netdata dashboard"
 }
@@ -31,7 +31,7 @@ resource "aws_security_group_rule" "egress" {
   from_port         = 0
   to_port           = 0
   protocol          = "-1"
-  cidr_blocks       = ["0.0.0.0/0"] #tfsec:ignore:AWS007
+  cidr_blocks       = ["0.0.0.0/0"] #tfsec:ignore:aws-vpc-no-public-egress-sgr
   security_group_id = aws_security_group.ingress.id
   description       = "Allow all egress rule for the Valheim server"
 }
