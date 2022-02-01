@@ -52,6 +52,7 @@ resource "aws_s3_bucket_public_access_block" "valheim" {
 }
 
 resource "aws_s3_bucket_object" "install_valheim" {
+  #checkov:skip=CKV_AWS_186:KMS encryption is not necessary
   bucket         = aws_s3_bucket.valheim.id
   key            = "/install_valheim.sh"
   content_base64 = base64encode(templatefile("${path.module}/local/install_valheim.sh", { username = local.username }))
@@ -59,6 +60,7 @@ resource "aws_s3_bucket_object" "install_valheim" {
 }
 
 resource "aws_s3_bucket_object" "bootstrap_valheim" {
+  #checkov:skip=CKV_AWS_186:KMS encryption is not necessary
   bucket = aws_s3_bucket.valheim.id
   key    = "/bootstrap_valheim.sh"
   content_base64 = base64encode(templatefile("${path.module}/local/bootstrap_valheim.sh", {
@@ -69,6 +71,7 @@ resource "aws_s3_bucket_object" "bootstrap_valheim" {
 }
 
 resource "aws_s3_bucket_object" "start_valheim" {
+  #checkov:skip=CKV_AWS_186:KMS encryption is not necessary
   bucket = aws_s3_bucket.valheim.id
   key    = "/start_valheim.sh"
   content_base64 = base64encode(templatefile("${path.module}/local/start_valheim.sh", {
@@ -83,6 +86,7 @@ resource "aws_s3_bucket_object" "start_valheim" {
 }
 
 resource "aws_s3_bucket_object" "backup_valheim" {
+  #checkov:skip=CKV_AWS_186:KMS encryption is not necessary
   bucket = aws_s3_bucket.valheim.id
   key    = "/backup_valheim.sh"
   content_base64 = base64encode(templatefile("${path.module}/local/backup_valheim.sh", {
@@ -94,6 +98,7 @@ resource "aws_s3_bucket_object" "backup_valheim" {
 }
 
 resource "aws_s3_bucket_object" "crontab" {
+  #checkov:skip=CKV_AWS_186:KMS encryption is not necessary
   bucket         = aws_s3_bucket.valheim.id
   key            = "/crontab"
   content_base64 = base64encode(templatefile("${path.module}/local/crontab", { username = local.username }))
@@ -101,6 +106,7 @@ resource "aws_s3_bucket_object" "crontab" {
 }
 
 resource "aws_s3_bucket_object" "valheim_service" {
+  #checkov:skip=CKV_AWS_186:KMS encryption is not necessary
   bucket         = aws_s3_bucket.valheim.id
   key            = "/valheim.service"
   content_base64 = base64encode(templatefile("${path.module}/local/valheim.service", { username = local.username }))
@@ -108,6 +114,7 @@ resource "aws_s3_bucket_object" "valheim_service" {
 }
 
 resource "aws_s3_bucket_object" "admin_list" {
+  #checkov:skip=CKV_AWS_186:KMS encryption is not necessary
   bucket         = aws_s3_bucket.valheim.id
   key            = "/adminlist.txt"
   content_base64 = base64encode(templatefile("${path.module}/local/adminlist.txt", { admins = values(var.admins) }))
@@ -115,6 +122,7 @@ resource "aws_s3_bucket_object" "admin_list" {
 }
 
 resource "aws_s3_bucket_object" "update_cname_json" {
+  #checkov:skip=CKV_AWS_186:KMS encryption is not necessary
   count = var.domain != "" ? 1 : 0
 
   bucket         = aws_s3_bucket.valheim.id
@@ -124,6 +132,7 @@ resource "aws_s3_bucket_object" "update_cname_json" {
 }
 
 resource "aws_s3_bucket_object" "update_cname" {
+  #checkov:skip=CKV_AWS_186:KMS encryption is not necessary
   count = var.domain != "" ? 1 : 0
 
   bucket = aws_s3_bucket.valheim.id
