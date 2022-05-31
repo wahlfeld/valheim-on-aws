@@ -24,7 +24,6 @@ jobs:
       env:
         TERRAFORM_VERSION: 1.1.4
         GO_VERSION: 1.17.6
-        TFSEC_VERSION: 1.0.2
       run: |
         ### Terraform ###
         wget https://releases.hashicorp.com/terraform/"${TERRAFORM_VERSION}"/terraform_"${TERRAFORM_VERSION}"_linux_amd64.zip
@@ -36,27 +35,18 @@ jobs:
         sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go"${GO_VERSION}".linux-amd64.tar.gz
         export PATH=$PATH:/usr/local/go/bin
 
-        ### Pre-commit ###
+        ### Checkov ###
         sudo apt update
-        sudo apt install python3-pip
-        pip install pre-commit
-
-        sudo apt install golang-golang-x-tools
-
-        sudo apt install golint
-
-        ### tfsec ###
-        wget https://github.com/tfsec/tfsec/releases/download/v"${TFSEC_VERSION}"/tfsec-checkgen-linux-amd64
-        sudo chmod +x tfsec-checkgen-linux-amd64
-        sudo mv tfsec-checkgen-linux-amd64 /usr/local/bin/tfsec
-
         sudo apt install software-properties-common
         sudo add-apt-repository ppa:deadsnakes/ppa
-        sudo apt install python3.7
-        sudo python3.7 -m pip install -U checkov
+        sudo apt install python3.9
+        sudo python3 -m pip install -U checkov
 
+        ### Others ###
+        pip install pre-commit
+        sudo apt install golang-golang-x-tools
+        sudo apt install golint
         curl https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
-
         sudo apt install nodejs npm
         sudo npm install -g markdown-link-check
 
