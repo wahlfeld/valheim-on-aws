@@ -123,11 +123,7 @@ override.tf.json
 # example: *tfplan*
 
 ### vscode ###
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+.vscode/
 *.code-workspace
 
 # End of https://www.toptal.com/developers/gitignore/api/terraform,vscode,intellij+all
