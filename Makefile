@@ -1,36 +1,15 @@
-SHELL := /bin/bash
-ROOT=${PWD}
+.PHONY: .phony
 
-all: fmt validate docs clean
+all: .phony pre-commit test
 
-ci: validate test
+build: .phony
+	docker-compose build --build-arg TF_VERSION=1.4.5
 
-install:
-	brew bundle \
-	&& go get golang.org/x/tools/cmd/goimports \
-	&& go get golang.org/x/lint/golint \
-	&& npm install -g markdown-link-check
+pre-commit: .phony build
+	CMD='pre-commit run --all-files' docker-compose run --rm pre-commit
 
-fmt:
-	terraform fmt --recursive
-
-# TODO: Github build broken
-check:
-	pre-commit run -a \
-	&& checkov --directory ${ROOT}/module
-
-validate: clean
-	cd ${ROOT}/template \
-		&& terraform init --backend=false && terraform validate
-
-test: clean
-	go mod tidy
-	cd $(ROOT)/test && go test -v -timeout 30m
-
-docs:
-	terraform-docs markdown ${ROOT}/template --output-file ../README.md --hide modules --hide resources --hide requirements --hide providers
+test: .phony
+	go test -v -timeout 30m
 
 clean:
-	for i in $$(find . -iname '.terraform' -o -iname '*.lock.*' -o -iname '*.tfstate*' -o -iname '.test-data'); do rm -rf $$i; done
-
-.PHONY: all ci install fmt check validate test docs clean
+	docker-compose down -v --remove-orphans
