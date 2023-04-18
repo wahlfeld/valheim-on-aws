@@ -9,7 +9,7 @@ pre-commit: .phony build
 	CMD='pre-commit run --all-files' docker-compose run --rm pre-commit
 
 test: .phony
-	go test -v -timeout 30m
+	CMD='go test -v -timeout 30m' docker-compose run --rm test
 
-clean:
+clean: .phony
 	docker-compose down -v --remove-orphans
