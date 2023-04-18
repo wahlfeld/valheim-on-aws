@@ -1,17 +1,18 @@
 module "main" {
   source = "../module"
 
-  admins           = var.admins
-  aws_region       = var.aws_region
-  domain           = var.domain
-  instance_type    = var.instance_type
-  keybase_username = var.keybase_username
-  purpose          = var.purpose
-  server_name      = var.server_name
-  server_password  = var.server_password
-  sns_email        = var.sns_email
-  unique_id        = var.unique_id
-  world_name       = var.world_name
+  admins                  = var.admins
+  aws_region              = var.aws_region
+  domain                  = var.domain
+  instance_type           = var.instance_type
+  keybase_username        = var.keybase_username
+  purpose                 = var.purpose
+  s3_lifecycle_expiration = var.s3_lifecycle_expiration
+  server_name             = var.server_name
+  server_password         = var.server_password
+  sns_email               = var.sns_email
+  unique_id               = var.unique_id
+  world_name              = var.world_name
 }
 
 output "monitoring_url" {

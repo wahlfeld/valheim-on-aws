@@ -1,15 +1,3 @@
-variable "aws_region" { type = string }
-variable "admins" { type = map(any) }
-variable "domain" { type = string }
-variable "keybase_username" { type = string }
-variable "instance_type" { type = string }
-variable "sns_email" { type = string }
-variable "world_name" { type = string }
-variable "server_name" { type = string }
-variable "server_password" { type = string }
-variable "purpose" { type = string }
-variable "unique_id" { type = string }
-
 locals {
   username = "vhserver"
   tags = {
@@ -24,4 +12,52 @@ locals {
     }
   )
   name = var.purpose != "prod" ? "valheim-${var.purpose}${var.unique_id}" : "valheim"
+}
+
+variable "admins" {
+  type = map(any)
+}
+
+variable "aws_region" {
+  type = string
+}
+
+variable "domain" {
+  type = string
+}
+
+variable "instance_type" {
+  type = string
+}
+
+variable "keybase_username" {
+  type = string
+}
+
+variable "purpose" {
+  type = string
+}
+
+variable "s3_lifecycle_expiration" {
+  type = string
+}
+
+variable "server_name" {
+  type = string
+}
+
+variable "server_password" {
+  type = string
+}
+
+variable "sns_email" {
+  type = string
+}
+
+variable "unique_id" {
+  type = string
+}
+
+variable "world_name" {
+  type = string
 }

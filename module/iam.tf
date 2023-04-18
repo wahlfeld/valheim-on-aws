@@ -88,6 +88,7 @@ resource "aws_iam_group" "valheim_users" {
 }
 
 resource "aws_iam_policy" "valheim_users" {
+  #checkov:skip=CKV_AWS_289:As resources will be dynamic we cannot avoid a wildcard
   name        = "${local.name}-user"
   description = "Allows Valheim users to start the server"
   policy = jsonencode({
@@ -123,6 +124,7 @@ resource "aws_iam_group_policy_attachment" "valheim_users" {
 
 resource "aws_iam_user" "valheim_user" {
   #checkov:skip=CKV2_AWS_22:We want users to be able to access the console
+  #checkov:skip=CKV_AWS_273:We want AWS IAM defined users not SSO
   for_each = var.admins
 
   name          = each.key

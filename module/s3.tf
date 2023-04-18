@@ -3,16 +3,54 @@ resource "aws_s3_bucket" "valheim" {
   #checkov:skip=CKV_AWS_18:Access logging is an extra cost and unecessary for this implementation
   #checkov:skip=CKV_AWS_144:Cross-region replication is an extra cost and unecessary for this implementation
   #checkov:skip=CKV_AWS_52:MFA delete is unecessary for this implementation
+  #checkov:skip=CKV2_AWS_62:Event notifications are unecessary for this implementation
   bucket_prefix = local.name
-  acl           = "private"
   tags          = local.tags
-  versioning { enabled = true }
+}
 
-  server_side_encryption_configuration {
-    rule {
-      apply_server_side_encryption_by_default {
-        sse_algorithm = "aws:kms"
-      }
+resource "aws_s3_bucket_versioning" "valheim" {
+  bucket = aws_s3_bucket.valheim.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_ownership_controls" "valheim" {
+  bucket = aws_s3_bucket.valheim.id
+
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+resource "aws_s3_bucket_acl" "valheim" {
+  bucket = aws_s3_bucket.valheim.id
+  acl    = "private"
+
+  depends_on = [aws_s3_bucket_ownership_controls.valheim]
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "valheim" {
+  #checkov:skip=CKV_AWS_300:Unnecessary to setup a period for aborting failed uploads
+  bucket = aws_s3_bucket.valheim.id
+
+  rule {
+    id     = "rule-1"
+    status = "Enabled"
+
+    expiration {
+      days = var.s3_lifecycle_expiration
+    }
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "valheim" {
+  bucket = aws_s3_bucket.valheim.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "aws:kms"
     }
   }
 }
@@ -51,7 +89,7 @@ resource "aws_s3_bucket_public_access_block" "valheim" {
   restrict_public_buckets = true
 }
 
-resource "aws_s3_bucket_object" "install_valheim" {
+resource "aws_s3_object" "install_valheim" {
   #checkov:skip=CKV_AWS_186:KMS encryption is not necessary
   bucket         = aws_s3_bucket.valheim.id
   key            = "/install_valheim.sh"
@@ -59,7 +97,7 @@ resource "aws_s3_bucket_object" "install_valheim" {
   etag           = filemd5("${path.module}/local/install_valheim.sh")
 }
 
-resource "aws_s3_bucket_object" "bootstrap_valheim" {
+resource "aws_s3_object" "bootstrap_valheim" {
   #checkov:skip=CKV_AWS_186:KMS encryption is not necessary
   bucket = aws_s3_bucket.valheim.id
   key    = "/bootstrap_valheim.sh"
@@ -70,7 +108,7 @@ resource "aws_s3_bucket_object" "bootstrap_valheim" {
   etag = filemd5("${path.module}/local/bootstrap_valheim.sh")
 }
 
-resource "aws_s3_bucket_object" "start_valheim" {
+resource "aws_s3_object" "start_valheim" {
   #checkov:skip=CKV_AWS_186:KMS encryption is not necessary
   bucket = aws_s3_bucket.valheim.id
   key    = "/start_valheim.sh"
@@ -85,7 +123,7 @@ resource "aws_s3_bucket_object" "start_valheim" {
   etag = filemd5("${path.module}/local/start_valheim.sh")
 }
 
-resource "aws_s3_bucket_object" "backup_valheim" {
+resource "aws_s3_object" "backup_valheim" {
   #checkov:skip=CKV_AWS_186:KMS encryption is not necessary
   bucket = aws_s3_bucket.valheim.id
   key    = "/backup_valheim.sh"
@@ -97,7 +135,7 @@ resource "aws_s3_bucket_object" "backup_valheim" {
   etag = filemd5("${path.module}/local/backup_valheim.sh")
 }
 
-resource "aws_s3_bucket_object" "crontab" {
+resource "aws_s3_object" "crontab" {
   #checkov:skip=CKV_AWS_186:KMS encryption is not necessary
   bucket         = aws_s3_bucket.valheim.id
   key            = "/crontab"
@@ -105,7 +143,7 @@ resource "aws_s3_bucket_object" "crontab" {
   etag           = filemd5("${path.module}/local/crontab")
 }
 
-resource "aws_s3_bucket_object" "valheim_service" {
+resource "aws_s3_object" "valheim_service" {
   #checkov:skip=CKV_AWS_186:KMS encryption is not necessary
   bucket         = aws_s3_bucket.valheim.id
   key            = "/valheim.service"
@@ -113,7 +151,7 @@ resource "aws_s3_bucket_object" "valheim_service" {
   etag           = filemd5("${path.module}/local/valheim.service")
 }
 
-resource "aws_s3_bucket_object" "admin_list" {
+resource "aws_s3_object" "admin_list" {
   #checkov:skip=CKV_AWS_186:KMS encryption is not necessary
   bucket         = aws_s3_bucket.valheim.id
   key            = "/adminlist.txt"
@@ -121,7 +159,7 @@ resource "aws_s3_bucket_object" "admin_list" {
   etag           = filemd5("${path.module}/local/adminlist.txt")
 }
 
-resource "aws_s3_bucket_object" "update_cname_json" {
+resource "aws_s3_object" "update_cname_json" {
   #checkov:skip=CKV_AWS_186:KMS encryption is not necessary
   count = var.domain != "" ? 1 : 0
 
@@ -131,7 +169,7 @@ resource "aws_s3_bucket_object" "update_cname_json" {
   etag           = filemd5("${path.module}/local/update_cname.json")
 }
 
-resource "aws_s3_bucket_object" "update_cname" {
+resource "aws_s3_object" "update_cname" {
   #checkov:skip=CKV_AWS_186:KMS encryption is not necessary
   count = var.domain != "" ? 1 : 0
 

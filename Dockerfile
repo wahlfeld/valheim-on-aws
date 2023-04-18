@@ -1,4 +1,7 @@
 FROM python:3.11-slim-buster
+# The following are unnecessary, as is only used for CI
+#checkov:skip=CKV_DOCKER_2: healthcheck
+#checkov:skip=CKV_DOCKER_3: user
 
 ARG TF_VERSION
 
