@@ -28,7 +28,7 @@ var l *logger.Logger
 func TestTerraform(t *testing.T) {
 	t.Parallel()
 
-	workingDir := "../template"
+	workingDir := "./template"
 	region := aws.GetRandomStableRegion(t, nil, nil)
 
 	defer test_structure.RunTestStage(t, "teardown_state_bucket", func() {
@@ -124,15 +124,20 @@ func deployUsingTerraform(t *testing.T, region string, workingDir string) {
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: workingDir,
 		Vars: map[string]interface{}{
-			"aws_region": region,
-			"unique_id":  uniqueID,
+			"aws_region":      region,
+			"instance_type":   "t3.medium",
+			"purpose":         "test",
+			"server_name":     "test-server",
+			"server_password": "test-password",
+			"sns_email":       "fake@email.com",
+			"unique_id":       uniqueID,
+			"world_name":      "test-world",
 			"admins": map[string]interface{}{
 				fmt.Sprintf("%s-testuser1", uniqueID): 76561197993928956,
 				fmt.Sprintf("%s-testuser2", uniqueID): 76561197994340320,
 				fmt.Sprintf("%s-testuser3", uniqueID): "",
 			},
 		},
-		VarFiles: []string{"../test/varfile.tfvars"},
 		EnvVars: map[string]string{
 			"AWS_DEFAULT_REGION":  region,
 			"AWS_SDK_LOAD_CONFIG": "true",

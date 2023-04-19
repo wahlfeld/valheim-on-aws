@@ -1,0 +1,22 @@
+FROM golang:1.20-buster
+# The following are unnecessary, as is only used for CI
+#checkov:skip=CKV_DOCKER_2: healthcheck
+#checkov:skip=CKV_DOCKER_3: user
+
+ARG TF_VERSION
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    curl \
+    unzip && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN curl -LO https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip && \
+    unzip terraform_${TF_VERSION}_linux_amd64.zip -d /usr/local/bin  && \
+    rm terraform_${TF_VERSION}_linux_amd64.zip
+
+WORKDIR /workdir/
+
+COPY go.mod .
+COPY go.sum .
+RUN go mod download

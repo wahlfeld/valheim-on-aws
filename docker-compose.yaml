@@ -1,0 +1,27 @@
+version: '3.9'
+
+services:
+  pre-commit:
+    build:
+      context: .
+      dockerfile: Dockerfile-pre-commit
+    command: ${CMD:-bash}
+    volumes:
+      - .:/workdir
+      - pre-commit-cache:/root/.cache/pre-commit
+    working_dir: /workdir
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile-test
+    command: ${CMD:-bash}
+    volumes:
+      - .:/workdir
+    working_dir: /workdir
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+
+volumes:
+  pre-commit-cache:

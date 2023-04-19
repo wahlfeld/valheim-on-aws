@@ -67,14 +67,14 @@ resource "aws_spot_instance_request" "valheim" {
   tags = local.ec2_tags
 
   depends_on = [
-    aws_s3_bucket_object.install_valheim,
-    aws_s3_bucket_object.start_valheim,
-    aws_s3_bucket_object.backup_valheim,
-    aws_s3_bucket_object.crontab,
-    aws_s3_bucket_object.valheim_service,
-    aws_s3_bucket_object.admin_list,
-    aws_s3_bucket_object.update_cname_json[0],
-    aws_s3_bucket_object.update_cname[0]
+    aws_s3_object.install_valheim,
+    aws_s3_object.start_valheim,
+    aws_s3_object.backup_valheim,
+    aws_s3_object.crontab,
+    aws_s3_object.valheim_service,
+    aws_s3_object.admin_list,
+    aws_s3_object.update_cname_json[0],
+    aws_s3_object.update_cname[0]
   ]
 }
 
