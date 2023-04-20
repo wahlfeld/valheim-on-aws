@@ -26,15 +26,15 @@ export SteamAppId=892970
 
 echo "Checking if world files exist locally"
 
-if [ ! -f "/home/${username}/.config/unity3d/IronGate/Valheim/worlds/${world_name}.fwl" ]; then
+if [ ! -f "/home/${username}/.config/unity3d/IronGate/Valheim/worlds_local/${world_name}.fwl" ]; then
     echo "No world files found locally, checking if backups exist"
     BACKUPS=$(aws s3api head-object --bucket ${bucket} --key "${world_name}.fwl" || true > /dev/null 2>&1)
-    if [ -z "$${BACKUPS}" ]; then 
+    if [ -z "$${BACKUPS}" ]; then
         echo "No backups found using world name \"${world_name}\". A new world will be created."
-    else 
+    else
         echo "Backups found, restoring..."
-        aws s3 cp "s3://${bucket}/${world_name}.fwl" "/home/${username}/.config/unity3d/IronGate/Valheim/worlds/${world_name}.fwl"
-        aws s3 cp "s3://${bucket}/${world_name}.db" "/home/${username}/.config/unity3d/IronGate/Valheim/worlds/${world_name}.db"
+        aws s3 cp "s3://${bucket}/${world_name}.fwl" "/home/${username}/.config/unity3d/IronGate/Valheim/worlds_local/${world_name}.fwl"
+        aws s3 cp "s3://${bucket}/${world_name}.db" "/home/${username}/.config/unity3d/IronGate/Valheim/worlds_local/${world_name}.db"
     fi
 fi
 

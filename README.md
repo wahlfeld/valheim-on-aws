@@ -25,7 +25,7 @@ you want to play.
 * MacOS required to run this code (or Linux, but will require some fiddling
   around)
 * AWS account including CLI configured on your machine
-* Terraform v0.14+
+* Terraform v1.4+
 
 ## Usage
 
@@ -57,8 +57,9 @@ valheim-on-aws           // (this project)
 └── your-valheim-server  // (create me)
     ├── inputs.tf        // (copied from ./template)
     ├── main.tf          // (copied from ./template)
+    ├── outputs.tf       // (copied from ./template)
     ├── terraform.tf     // (copied from ./template)
-    └── terraform.tfvars // (create me), example above)
+    └── terraform.tfvars // (create me, example above)
 ```
 
 ### Monitoring
@@ -92,49 +93,48 @@ todo
 
 The following breakdown is an estimate based on the region `ap-southeast-2` and
 the **monthly** cost. A more accurate estimate is the **hourly** cost since the
-server is designed to shutdown automatically when not in use. 
+server is designed to shutdown automatically when not in use.
 
 I.e. `35.74 * 12 / 52 / 7 / 24 =` **$0.049 USD per hour**
 
 ```
- Name                                                            Quantity  Unit                Monthly Cost 
-                                                                                                            
- module.main.aws_cloudwatch_metric_alarm.valheim_stopped                                                    
- └─ Standard resolution                                                 1  alarm metrics              $0.10 
-                                                                                                            
- module.main.aws_instance.valheim                                                                           
- ├─ Instance usage (Linux/UNIX, on-demand, t3a.medium)                730  hours                     $34.67 
- ├─ CPU credits                                           Cost depends on usage: $0.05 per vCPU-hours       
- └─ root_block_device                                                                                       
-    └─ Storage (general purpose SSD, gp2)                               8  GB-months                  $0.96 
-                                                                                                            
- module.main.aws_route53_record.valheim[0]                                                                  
- ├─ Standard queries (first 1B)                           Cost depends on usage: $0.40 per 1M queries       
- ├─ Latency based routing queries (first 1B)              Cost depends on usage: $0.60 per 1M queries       
- └─ Geo DNS queries (first 1B)                            Cost depends on usage: $0.70 per 1M queries       
-                                                                                                            
- module.main.aws_s3_bucket.valheim                                                                          
- └─ Standard                                                                                                
-    ├─ Storage                                            Cost depends on usage: $0.03 per GB-months        
-    ├─ PUT, COPY, POST, LIST requests                     Cost depends on usage: $0.0055 per 1k requests    
-    ├─ GET, SELECT, and all other requests                Cost depends on usage: $0.00044 per 1k requests   
-    ├─ Select data scanned                                Cost depends on usage: $0.00225 per GB-months     
-    └─ Select data returned                               Cost depends on usage: $0.0008 per GB-months      
-                                                                                                            
- module.main.aws_sns_topic.valheim                                                                          
- └─ Requests                                              Cost depends on usage: $0.50 per 1M requests      
-                                                                                                            
- PROJECT TOTAL                                                                                       $35.74 
+ Name                                                            Quantity  Unit                Monthly Cost
+
+ module.main.aws_cloudwatch_metric_alarm.valheim_stopped
+ └─ Standard resolution                                                 1  alarm metrics              $0.10
+
+ module.main.aws_instance.valheim
+ ├─ Instance usage (Linux/UNIX, on-demand, t3a.medium)                730  hours                     $34.67
+ ├─ CPU credits                                           Cost depends on usage: $0.05 per vCPU-hours
+ └─ root_block_device
+    └─ Storage (general purpose SSD, gp2)                               8  GB-months                  $0.96
+
+ module.main.aws_route53_record.valheim[0]
+ ├─ Standard queries (first 1B)                           Cost depends on usage: $0.40 per 1M queries
+ ├─ Latency based routing queries (first 1B)              Cost depends on usage: $0.60 per 1M queries
+ └─ Geo DNS queries (first 1B)                            Cost depends on usage: $0.70 per 1M queries
+
+ module.main.aws_s3_bucket.valheim
+ └─ Standard
+    ├─ Storage                                            Cost depends on usage: $0.03 per GB-months
+    ├─ PUT, COPY, POST, LIST requests                     Cost depends on usage: $0.0055 per 1k requests
+    ├─ GET, SELECT, and all other requests                Cost depends on usage: $0.00044 per 1k requests
+    ├─ Select data scanned                                Cost depends on usage: $0.00225 per GB-months
+    └─ Select data returned                               Cost depends on usage: $0.0008 per GB-months
+
+ module.main.aws_sns_topic.valheim
+ └─ Requests                                              Cost depends on usage: $0.50 per 1M requests
+
+ PROJECT TOTAL                                                                                       $35.74
 ```
-Source: Infracost v0.8.5 `infracost breakdown --path . --show-skipped
---no-color` 
+Source: Infracost v0.8.5 `infracost breakdown --path . --show-skipped --no-color`
 
 ## Install dependencies
 
-Currently this installs more than required to run the code, however doesn't
-include AWS CLI.
-
-`make install`
+* Terraform
+* AWS CLI
+* Docker
+* Golang
 
 <!-- BEGIN_TF_DOCS -->
 ## Inputs
@@ -147,6 +147,7 @@ include AWS CLI.
 | <a name="input_instance_type"></a> [instance\_type](#input\_instance\_type) | AWS EC2 instance type to run the server on (t3a.medium is the minimum size) | `string` | `"t3a.medium"` | no |
 | <a name="input_keybase_username"></a> [keybase\_username](#input\_keybase\_username) | The Keybase username to encrypt AWS user passwords with | `string` | `"marypoppins"` | no |
 | <a name="input_purpose"></a> [purpose](#input\_purpose) | The purpose of the deployment | `string` | `"prod"` | no |
+| <a name="input_s3_lifecycle_expiration"></a> [s3\_lifecycle\_expiration](#input\_s3\_lifecycle\_expiration) | The number of days to keep files (backups) in the S3 bucket before deletion | `string` | `"90"` | no |
 | <a name="input_server_name"></a> [server\_name](#input\_server\_name) | The server name | `string` | n/a | yes |
 | <a name="input_server_password"></a> [server\_password](#input\_server\_password) | The server password | `string` | n/a | yes |
 | <a name="input_sns_email"></a> [sns\_email](#input\_sns\_email) | The email address to send alerts to | `string` | n/a | yes |
@@ -160,63 +161,12 @@ include AWS CLI.
 | <a name="output_bucket_id"></a> [bucket\_id](#output\_bucket\_id) | The S3 bucket name |
 | <a name="output_instance_id"></a> [instance\_id](#output\_instance\_id) | The EC2 instance ID |
 | <a name="output_monitoring_url"></a> [monitoring\_url](#output\_monitoring\_url) | URL to monitor the Valheim Server |
+| <a name="output_valheim_server_name"></a> [valheim\_server\_name](#output\_valheim\_server\_name) | Name of the Valheim server |
 | <a name="output_valheim_user_passwords"></a> [valheim\_user\_passwords](#output\_valheim\_user\_passwords) | List of AWS users and their encrypted passwords |
 <!-- END_TF_DOCS -->
-
-## Example Terraform State
-
-```
-module.main.data.aws_ami.ubuntu
-module.main.data.aws_caller_identity.current
-module.main.data.aws_iam_policy.ssm
-module.main.data.aws_route53_zone.selected[0]
-module.main.aws_cloudwatch_event_rule.valheim_started
-module.main.aws_cloudwatch_event_target.valheim_started
-module.main.aws_cloudwatch_metric_alarm.valheim_stopped
-module.main.aws_iam_group.valheim_users
-module.main.aws_iam_group_policy_attachment.valheim_users
-module.main.aws_iam_instance_profile.valheim
-module.main.aws_iam_policy.valheim
-module.main.aws_iam_policy.valheim_cname[0]
-module.main.aws_iam_policy.valheim_users
-module.main.aws_iam_policy_attachment.ssm
-module.main.aws_iam_policy_attachment.valheim
-module.main.aws_iam_policy_attachment.valheim_cname[0]
-module.main.aws_iam_role.valheim
-module.main.aws_iam_user.valheim_user["user1"]
-module.main.aws_iam_user.valheim_user["user2"]
-module.main.aws_iam_user.valheim_user["user3"]
-module.main.aws_iam_user_group_membership.valheim_users["user1"]
-module.main.aws_iam_user_group_membership.valheim_users["user2"]
-module.main.aws_iam_user_group_membership.valheim_users["user3"]
-module.main.aws_iam_user_login_profile.valheim_user["user1"]
-module.main.aws_iam_user_login_profile.valheim_user["user2"]
-module.main.aws_iam_user_login_profile.valheim_user["user3"]
-module.main.aws_instance.valheim
-module.main.aws_route53_record.valheim[0]
-module.main.aws_s3_bucket.valheim
-module.main.aws_s3_bucket_object.admin_list
-module.main.aws_s3_bucket_object.backup_valheim
-module.main.aws_s3_bucket_object.bootstrap_valheim
-module.main.aws_s3_bucket_object.crontab
-module.main.aws_s3_bucket_object.install_valheim
-module.main.aws_s3_bucket_object.start_valheim
-module.main.aws_s3_bucket_object.update_cname[0]
-module.main.aws_s3_bucket_object.update_cname_json[0]
-module.main.aws_s3_bucket_object.valheim_service
-module.main.aws_s3_bucket_policy.valheim
-module.main.aws_security_group.ingress
-module.main.aws_security_group_rule.egress
-module.main.aws_security_group_rule.netdata
-module.main.aws_security_group_rule.valheim_ingress
-module.main.aws_sns_topic.valheim
-module.main.aws_sns_topic_subscription.valheim
-```
 
 ## todo
 
 - Add docs on performing restores
 - Don't include empty keys in admin list
-- Fix shellcheck and terraform docs pre commit
 - Add tests e.g. cron, scripts exist, ports open, s3 access, etc
-- Add support for spot instances
