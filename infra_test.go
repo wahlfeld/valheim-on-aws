@@ -8,7 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gruntwork-io/terratest/modules/aws"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/random"
 	"github.com/gruntwork-io/terratest/modules/retry"
@@ -16,6 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	taws "github.com/gruntwork-io/terratest/modules/aws"
 	http_helper "github.com/gruntwork-io/terratest/modules/http-helper"
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
@@ -23,13 +28,14 @@ import (
 var uniqueID string = strings.ToLower(random.UniqueId())
 var stateBucket string = fmt.Sprintf("%s-terratest-valheim", uniqueID)
 var key string = fmt.Sprintf("%s/terraform.tfstate", uniqueID)
+var worldName string = "test-world"
 var l *logger.Logger
 
 func TestTerraform(t *testing.T) {
 	t.Parallel()
 
 	workingDir := "./template"
-	region := aws.GetRandomStableRegion(t, nil, nil)
+	region := taws.GetRandomStableRegion(t, nil, nil)
 
 	defer test_structure.RunTestStage(t, "teardown_state_bucket", func() {
 		cleanUpStateBucket(t, region, stateBucket)
@@ -44,7 +50,7 @@ func TestTerraform(t *testing.T) {
 	})
 
 	test_structure.RunTestStage(t, "create_state_bucket", func() {
-		aws.CreateS3Bucket(t, region, stateBucket)
+		taws.CreateS3Bucket(t, region, stateBucket)
 	})
 
 	test_structure.RunTestStage(t, "deploy_terraform", func() {
@@ -52,7 +58,7 @@ func TestTerraform(t *testing.T) {
 	})
 
 	test_structure.RunTestStage(t, "check_state_bucket", func() {
-		contents := aws.GetS3ObjectContents(t, region, stateBucket, key)
+		contents := taws.GetS3ObjectContents(t, region, stateBucket, key)
 		require.Contains(t, contents, uniqueID)
 	})
 
@@ -61,11 +67,11 @@ func TestTerraform(t *testing.T) {
 
 		bucketID := terraform.Output(t, terraformOptions, "bucket_id")
 
-		actualStatus := aws.GetS3BucketVersioning(t, region, bucketID)
+		actualStatus := taws.GetS3BucketVersioning(t, region, bucketID)
 		expectedStatus := "Enabled"
 		assert.Equal(t, expectedStatus, actualStatus)
 
-		aws.AssertS3BucketPolicyExists(t, region, bucketID)
+		taws.AssertS3BucketPolicyExists(t, region, bucketID)
 	})
 
 	test_structure.RunTestStage(t, "test_instance_ssm", func() {
@@ -74,14 +80,14 @@ func TestTerraform(t *testing.T) {
 		instanceID := terraform.Output(t, terraformOptions, "instance_id")
 		timeout := 3 * time.Minute
 
-		aws.WaitForSsmInstance(t, region, instanceID, timeout)
+		taws.WaitForSsmInstance(t, region, instanceID, timeout)
 
-		result := aws.CheckSsmCommand(t, region, instanceID, "echo Hello, World", timeout)
+		result := taws.CheckSsmCommand(t, region, instanceID, "echo Hello, World", timeout)
 		require.Equal(t, result.Stdout, "Hello, World\n")
 		require.Equal(t, result.Stderr, "")
 		require.Equal(t, int64(0), result.ExitCode)
 
-		result, err := aws.CheckSsmCommandE(t, region, instanceID, "cat /wrong/file", timeout)
+		result, err := taws.CheckSsmCommandE(t, region, instanceID, "cat /wrong/file", timeout)
 		require.Error(t, err)
 		require.Equal(t, "Failed", err.Error())
 		require.Equal(t, "cat: /wrong/file: No such file or directory\nfailed to run commands: exit status 1", result.Stderr)
@@ -103,10 +109,10 @@ func TestTerraform(t *testing.T) {
 		instanceID := terraform.Output(t, terraformOptions, "instance_id")
 		timeout := 3 * time.Minute
 
-		aws.WaitForSsmInstance(t, region, instanceID, timeout)
+		taws.WaitForSsmInstance(t, region, instanceID, timeout)
 
 		retry.DoWithRetry(t, "Checking if Valheim service is running", 55, 5*time.Second, func() (string, error) {
-			out, _ := aws.CheckSsmCommandE(t, region, instanceID, "systemctl is-active valheim", timeout)
+			out, _ := taws.CheckSsmCommandE(t, region, instanceID, "systemctl is-active valheim", timeout)
 
 			expectedStatus := "active"
 			actualStatus := strings.TrimSpace(out.Stdout)
@@ -117,6 +123,63 @@ func TestTerraform(t *testing.T) {
 
 			return "", nil
 		})
+	})
+
+	test_structure.RunTestStage(t, "test_create_backup", func() {
+		terraformOptions := test_structure.LoadTerraformOptions(t, workingDir)
+
+		bucketID := terraform.Output(t, terraformOptions, "bucket_id")
+		instanceID := terraform.Output(t, terraformOptions, "instance_id")
+
+		sess := session.Must(session.NewSession(&aws.Config{
+			Region: aws.String(region),
+		}))
+
+		svc := ec2.New(sess)
+		inputStop := &ec2.StopInstancesInput{
+			InstanceIds: []*string{aws.String(instanceID)},
+		}
+		_, err := svc.StopInstances(inputStop)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = svc.WaitUntilInstanceStopped(&ec2.DescribeInstancesInput{
+			InstanceIds: []*string{aws.String(instanceID)},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		fileNames := []string{worldName + ".fwl", worldName + ".db"}
+		checkS3FilesExist(t, sess, bucketID, fileNames)
+
+		inputStart := &ec2.StartInstancesInput{
+			InstanceIds: []*string{aws.String(instanceID)},
+		}
+		_, err = svc.StartInstances(inputStart)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = svc.WaitUntilInstanceRunning(&ec2.DescribeInstancesInput{
+			InstanceIds: []*string{aws.String(instanceID)},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	test_structure.RunTestStage(t, "test_restore_backup", func() {
+		terraformOptions := test_structure.LoadTerraformOptions(t, workingDir)
+
+		instanceID := terraform.Output(t, terraformOptions, "instance_id")
+
+		logs := taws.GetSyslogForInstance(t, instanceID, region)
+
+		if !strings.Contains(logs, "Backups found, restoring...") {
+			t.Fatalf("Expected log message 'Backups found, restoring...' not found in syslog")
+		}
 	})
 }
 
@@ -131,7 +194,7 @@ func deployUsingTerraform(t *testing.T, region string, workingDir string) {
 			"server_password": "test-password",
 			"sns_email":       "fake@email.com",
 			"unique_id":       uniqueID,
-			"world_name":      "test-world",
+			"world_name":      worldName,
 			"admins": map[string]interface{}{
 				fmt.Sprintf("%s-testuser1", uniqueID): 76561197993928956,
 				fmt.Sprintf("%s-testuser2", uniqueID): 76561197994340320,
@@ -160,8 +223,8 @@ func undeployUsingTerraform(t *testing.T, workingDir string) {
 }
 
 func cleanUpStateBucket(t *testing.T, region string, stateBucket string) {
-	aws.EmptyS3Bucket(t, region, stateBucket)
-	aws.DeleteS3Bucket(t, region, stateBucket)
+	taws.EmptyS3Bucket(t, region, stateBucket)
+	taws.DeleteS3Bucket(t, region, stateBucket)
 }
 
 func validateResponse(t *testing.T, address string, maxRetries int, timeBetweenRetries time.Duration) {
@@ -170,11 +233,30 @@ func validateResponse(t *testing.T, address string, maxRetries int, timeBetweenR
 	})
 }
 
-func fetchSyslogForInstance(t *testing.T, awsRegion string, workingDir string) {
+func fetchSyslogForInstance(t *testing.T, region string, workingDir string) {
 	terraformOptions := test_structure.LoadTerraformOptions(t, workingDir)
 
 	instanceID := terraform.OutputRequired(t, terraformOptions, "instance_id")
-	logs := aws.GetSyslogForInstance(t, instanceID, awsRegion)
+	logs := taws.GetSyslogForInstance(t, instanceID, region)
 
 	l.Logf(t, "Most recent syslog for Instance %s:\n\n%s\n", instanceID, logs)
+}
+
+func checkS3FilesExist(t *testing.T, sess *session.Session, bucketName string, fileNames []string) {
+	svc := s3.New(sess)
+
+	for _, fileName := range fileNames {
+		input := &s3.HeadObjectInput{
+			Bucket: aws.String(bucketName),
+			Key:    aws.String(fileName),
+		}
+
+		_, err := svc.HeadObject(input)
+		if err != nil {
+			if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == "NotFound" {
+				t.Fatalf("File %s does not exist in the bucket %s", fileName, bucketName)
+			}
+			t.Fatal(err)
+		}
+	}
 }
