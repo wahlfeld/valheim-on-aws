@@ -3,6 +3,7 @@ package test
 import (
 	"crypto/tls"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"testing"
@@ -38,6 +39,11 @@ func TestTerraform(t *testing.T) {
 	region := taws.GetRandomStableRegion(t, nil, nil)
 
 	defer test_structure.RunTestStage(t, "teardown_state_bucket", func() {
+		if r := recover(); r != nil {
+			// If there was a panic during teardown_terraform, don't run teardown_state_bucket
+			log.Fatal("Panic detected, deliberately skipping teardown_state_bucket. Manual intervention required.")
+			return
+		}
 		cleanUpStateBucket(t, region, stateBucket)
 	})
 
@@ -125,16 +131,19 @@ func TestTerraform(t *testing.T) {
 		})
 	})
 
-	test_structure.RunTestStage(t, "test_create_backup", func() {
+	test_structure.RunTestStage(t, "test_backup_and_restore", func() {
 		terraformOptions := test_structure.LoadTerraformOptions(t, workingDir)
 
 		bucketID := terraform.Output(t, terraformOptions, "bucket_id")
+		defer taws.EmptyS3Bucket(t, region, bucketID)
+
 		instanceID := terraform.Output(t, terraformOptions, "instance_id")
 
 		sess := session.Must(session.NewSession(&aws.Config{
 			Region: aws.String(region),
 		}))
 
+		log.Printf("Stopping instance %s", instanceID)
 		svc := ec2.New(sess)
 		inputStop := &ec2.StopInstancesInput{
 			InstanceIds: []*string{aws.String(instanceID)},
@@ -144,6 +153,7 @@ func TestTerraform(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		log.Printf("Waiting until instance %s has stoppped", instanceID)
 		err = svc.WaitUntilInstanceStopped(&ec2.DescribeInstancesInput{
 			InstanceIds: []*string{aws.String(instanceID)},
 		})
@@ -151,9 +161,11 @@ func TestTerraform(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		log.Printf("Checking that world files exist in S3 bucket %s", bucketID)
 		fileNames := []string{worldName + ".fwl", worldName + ".db"}
 		checkS3FilesExist(t, sess, bucketID, fileNames)
 
+		log.Printf("Starting instance %s", instanceID)
 		inputStart := &ec2.StartInstancesInput{
 			InstanceIds: []*string{aws.String(instanceID)},
 		}
@@ -162,21 +174,17 @@ func TestTerraform(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		log.Printf("Waiting until instance %s has started", instanceID)
 		err = svc.WaitUntilInstanceRunning(&ec2.DescribeInstancesInput{
 			InstanceIds: []*string{aws.String(instanceID)},
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
-	})
-
-	test_structure.RunTestStage(t, "test_restore_backup", func() {
-		terraformOptions := test_structure.LoadTerraformOptions(t, workingDir)
-
-		instanceID := terraform.Output(t, terraformOptions, "instance_id")
 
 		logs := taws.GetSyslogForInstance(t, instanceID, region)
 
+		log.Printf("Checking syslog to ensure backup has been restored from S3 bucket %s", bucketID)
 		if !strings.Contains(logs, "Backups found, restoring...") {
 			t.Fatalf("Expected log message 'Backups found, restoring...' not found in syslog")
 		}
