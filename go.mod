@@ -3,6 +3,7 @@ module test
 go 1.20
 
 require (
+	github.com/aws/aws-sdk-go v1.44.246
 	github.com/gruntwork-io/terratest v0.41.18
 	github.com/stretchr/testify v1.8.2
 )
@@ -15,7 +16,6 @@ require (
 	cloud.google.com/go/storage v1.30.1 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
-	github.com/aws/aws-sdk-go v1.44.246 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
 	github.com/boombuler/barcode v1.0.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
