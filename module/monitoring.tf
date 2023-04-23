@@ -63,14 +63,14 @@ resource "aws_cloudwatch_event_target" "valheim_started" {
 }
 
 data "aws_route53_zone" "selected" {
-  count = var.domain != "" ? 1 : 0
+  count = local.use_domain ? 1 : 0
 
   name = "${var.domain}."
 }
 
 resource "aws_route53_record" "valheim" {
   #checkov:skip=CKV2_AWS_23:Broken - https://github.com/bridgecrewio/checkov/issues/1359
-  count = var.domain != "" ? 1 : 0
+  count = local.use_domain ? 1 : 0
 
   zone_id = data.aws_route53_zone.selected[0].zone_id
   name    = local.name
@@ -80,5 +80,5 @@ resource "aws_route53_record" "valheim" {
 }
 
 output "monitoring_url" {
-  value = format("%s%s%s", "http://", var.domain != "" ? aws_route53_record.valheim[0].fqdn : aws_spot_instance_request.valheim.public_dns, ":19999")
+  value = format("%s%s%s", "http://", local.use_domain ? aws_route53_record.valheim[0].fqdn : aws_spot_instance_request.valheim.public_dns, ":19999")
 }

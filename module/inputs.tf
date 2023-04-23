@@ -11,7 +11,8 @@ locals {
       "Description" = "Instance running a Valheim server"
     }
   )
-  name = var.purpose != "prod" ? "valheim-${var.purpose}${var.unique_id}" : "valheim"
+  name       = var.purpose != "prod" ? "valheim-${var.purpose}${var.unique_id}" : "valheim"
+  use_domain = var.domain != "" ? true : false
 }
 
 variable "admins" {

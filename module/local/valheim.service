@@ -15,7 +15,7 @@ Group=${username}
 WorkingDirectory=/home/${username}/valheim
 ExecStartPre=/home/${username}/steam/steamcmd.sh +login anonymous +force_install_dir /home/${username}/valheim +app_update 896660 +quit
 ExecStart=/home/${username}/valheim/bootstrap_valheim.sh
-%{ if domain ~}
+%{ if use_domain ~}
 ExecStopPost=/home/${username}/valheim/update_cname.sh
 %{ endif ~}
 KillSignal=SIGINT

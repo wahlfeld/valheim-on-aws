@@ -115,7 +115,7 @@ resource "aws_s3_object" "start_valheim" {
   content_base64 = base64encode(templatefile("${path.module}/local/start_valheim.sh", {
     username        = local.username
     bucket          = aws_s3_bucket.valheim.id
-    use_domain      = var.domain != "" ? true : false
+    use_domain      = local.use_domain
     world_name      = var.world_name
     server_name     = var.server_name
     server_password = var.server_password
@@ -148,8 +148,8 @@ resource "aws_s3_object" "valheim_service" {
   bucket = aws_s3_bucket.valheim.id
   key    = "/valheim.service"
   content_base64 = base64encode(templatefile("${path.module}/local/valheim.service", {
-    domain   = var.domain
-    username = local.username
+    use_domain = local.use_domain
+    username   = local.username
   }))
   etag = filemd5("${path.module}/local/valheim.service")
 }
@@ -164,7 +164,7 @@ resource "aws_s3_object" "admin_list" {
 
 resource "aws_s3_object" "update_cname_json" {
   #checkov:skip=CKV_AWS_186:KMS encryption is not necessary
-  count = var.domain != "" ? 1 : 0
+  count = local.use_domain ? 1 : 0
 
   bucket         = aws_s3_bucket.valheim.id
   key            = "/update_cname.json"
@@ -174,7 +174,7 @@ resource "aws_s3_object" "update_cname_json" {
 
 resource "aws_s3_object" "update_cname" {
   #checkov:skip=CKV_AWS_186:KMS encryption is not necessary
-  count = var.domain != "" ? 1 : 0
+  count = local.use_domain ? 1 : 0
 
   bucket = aws_s3_bucket.valheim.id
   key    = "/update_cname.sh"
