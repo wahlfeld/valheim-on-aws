@@ -21,10 +21,10 @@ variable "instance_type" {
   description = "AWS EC2 instance type to run the server on (t3a.medium is the minimum size)"
 }
 
-variable "keybase_username" {
+variable "pgp_key" {
   type        = string
-  default     = "marypoppins"
-  description = "The Keybase username to encrypt AWS user passwords with"
+  default     = "keybase:marypoppins"
+  description = "The base64 encoded PGP public key to encrypt AWS user passwords with. Can use keybase syntax, e.g., 'keybase:username'."
 }
 
 variable "purpose" {

@@ -145,10 +145,13 @@ resource "aws_s3_object" "crontab" {
 
 resource "aws_s3_object" "valheim_service" {
   #checkov:skip=CKV_AWS_186:KMS encryption is not necessary
-  bucket         = aws_s3_bucket.valheim.id
-  key            = "/valheim.service"
-  content_base64 = base64encode(templatefile("${path.module}/local/valheim.service", { username = local.username }))
-  etag           = filemd5("${path.module}/local/valheim.service")
+  bucket = aws_s3_bucket.valheim.id
+  key    = "/valheim.service"
+  content_base64 = base64encode(templatefile("${path.module}/local/valheim.service", {
+    domain   = var.domain
+    username = local.username
+  }))
+  etag = filemd5("${path.module}/local/valheim.service")
 }
 
 resource "aws_s3_object" "admin_list" {

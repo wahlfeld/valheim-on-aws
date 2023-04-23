@@ -137,7 +137,7 @@ resource "aws_iam_user_login_profile" "valheim_user" {
   for_each = aws_iam_user.valheim_user
 
   user    = aws_iam_user.valheim_user[each.key].name
-  pgp_key = "keybase:${var.keybase_username}"
+  pgp_key = var.pgp_key
 }
 
 resource "aws_iam_user_group_membership" "valheim_users" {

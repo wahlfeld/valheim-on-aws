@@ -30,7 +30,7 @@ variable "instance_type" {
   type = string
 }
 
-variable "keybase_username" {
+variable "pgp_key" {
   type = string
 }
 
