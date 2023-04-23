@@ -145,7 +145,7 @@ Source: Infracost v0.8.5 `infracost breakdown --path . --show-skipped --no-color
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | The AWS region to create the Valheim server | `string` | n/a | yes |
 | <a name="input_domain"></a> [domain](#input\_domain) | Domain name used to create a static monitoring URL | `string` | `""` | no |
 | <a name="input_instance_type"></a> [instance\_type](#input\_instance\_type) | AWS EC2 instance type to run the server on (t3a.medium is the minimum size) | `string` | `"t3a.medium"` | no |
-| <a name="input_keybase_username"></a> [keybase\_username](#input\_keybase\_username) | The Keybase username to encrypt AWS user passwords with | `string` | `"marypoppins"` | no |
+| <a name="input_pgp_key"></a> [pgp\_key](#input\_pgp\_key) | The base64 encoded PGP public key to encrypt AWS user passwords with. Can use keybase syntax, e.g., 'keybase:username'. | `string` | `"keybase:marypoppins"` | no |
 | <a name="input_purpose"></a> [purpose](#input\_purpose) | The purpose of the deployment | `string` | `"prod"` | no |
 | <a name="input_s3_lifecycle_expiration"></a> [s3\_lifecycle\_expiration](#input\_s3\_lifecycle\_expiration) | The number of days to keep files (backups) in the S3 bucket before deletion | `string` | `"90"` | no |
 | <a name="input_server_name"></a> [server\_name](#input\_server\_name) | The server name | `string` | n/a | yes |
@@ -169,4 +169,4 @@ Source: Infracost v0.8.5 `infracost breakdown --path . --show-skipped --no-color
 
 - Add docs on performing restores
 - Don't include empty keys in admin list
-- Add tests e.g. cron, scripts exist, ports open, s3 access, etc
+- Add tests, e.g., cron, cname update, etc
