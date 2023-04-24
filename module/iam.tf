@@ -48,7 +48,7 @@ resource "aws_iam_policy" "valheim" {
 }
 
 resource "aws_iam_policy" "valheim_cname" {
-  count = var.domain != "" ? 1 : 0
+  count = local.use_domain ? 1 : 0
 
   name        = "${local.name}-cname"
   description = "Allows the Valheim server to update its own CNAME when recreated"
@@ -70,7 +70,7 @@ resource "aws_iam_role_policy_attachment" "valheim" {
 }
 
 resource "aws_iam_role_policy_attachment" "valheim_cname" {
-  count = var.domain != "" ? 1 : 0
+  count = local.use_domain ? 1 : 0
 
   role       = aws_iam_role.valheim.name
   policy_arn = aws_iam_policy.valheim_cname[0].arn
@@ -137,7 +137,7 @@ resource "aws_iam_user_login_profile" "valheim_user" {
   for_each = aws_iam_user.valheim_user
 
   user    = aws_iam_user.valheim_user[each.key].name
-  pgp_key = "keybase:${var.keybase_username}"
+  pgp_key = var.pgp_key
 }
 
 resource "aws_iam_user_group_membership" "valheim_users" {
