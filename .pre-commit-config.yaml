@@ -10,4 +10,3 @@ repos:
       - id: terraform_fmt
       - id: terraform_tflint
       - id: terraform_validate
-      - id: tfupdate
