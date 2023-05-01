@@ -148,8 +148,7 @@ resource "aws_s3_object" "valheim_service" {
   bucket = aws_s3_bucket.valheim.id
   key    = "/valheim.service"
   content_base64 = base64encode(templatefile("${path.module}/local/valheim.service", {
-    use_domain = local.use_domain
-    username   = local.username
+    username = local.username
   }))
   etag = filemd5("${path.module}/local/valheim.service")
 }
