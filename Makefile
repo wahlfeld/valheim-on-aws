@@ -3,12 +3,12 @@
 all: .phony pre-commit test
 
 build: .phony
-	docker-compose build --build-arg TF_VERSION=1.4.6
+	docker-compose build
 
-pre-commit: .phony build
+pre-commit: .phony clean build
 	CMD='pre-commit run --all-files' docker-compose run --rm pre-commit
 
-test: .phony
+test: .phony clean_docker build
 	CMD='go test -v -timeout 30m' docker-compose run --rm test
 
 clean: clean_docker clean_terraform
