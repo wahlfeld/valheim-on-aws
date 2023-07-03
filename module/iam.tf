@@ -88,7 +88,8 @@ resource "aws_iam_group" "valheim_users" {
 }
 
 resource "aws_iam_policy" "valheim_users" {
-  #checkov:skip=CKV_AWS_289:As resources will be dynamic we cannot avoid a wildcard
+  #checkov:skip=CKV_AWS_289:Valheim EC2 instances are dynamic so we cannot avoid a wildcard
+  #checkov:skip=CKV_AWS_355:Valheim EC2 instances are dynamic so we cannot avoid a wildcard
   name        = "${local.name}-user"
   description = "Allows Valheim users to start the server"
   policy = jsonencode({

@@ -3,8 +3,6 @@ FROM python:3.11-slim-buster
 #checkov:skip=CKV_DOCKER_2: healthcheck
 #checkov:skip=CKV_DOCKER_3: user
 
-ARG TF_VERSION
-
 RUN pip install --upgrade pip \
     pip install checkov \
     pip install pre-commit==2.21.0
@@ -17,15 +15,12 @@ RUN apt-get update && \
     unzip && \
     rm -rf /var/lib/apt/lists/*
 
-RUN curl -LO https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip && \
-    unzip terraform_${TF_VERSION}_linux_amd64.zip -d /usr/local/bin  && \
-    rm terraform_${TF_VERSION}_linux_amd64.zip
+RUN curl -L https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh | bash
+COPY module/terraform.tf .
+RUN tfswitch && terraform --version
 
 RUN curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
-
-RUN curl -LO https://github.com/minamijoyo/tfupdate/releases/download/v0.6.7/tfupdate_0.6.7_linux_amd64.tar.gz && \
-    tar -xzf tfupdate_0.6.7_linux_amd64.tar.gz -C /usr/local/bin && \
-    rm tfupdate_0.6.7_linux_amd64.tar.gz
+RUN tflint --version
 
 WORKDIR /workdir/
 RUN git config --global --add safe.directory /workdir
