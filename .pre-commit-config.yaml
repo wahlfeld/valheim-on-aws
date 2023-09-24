@@ -1,10 +1,6 @@
 repos:
-  # - repo: https://github.com/gruntwork-io/pre-commit
-  #   rev: v0.1.20
-  #   hooks:
-  #     - id: shellcheck
   - repo: https://github.com/antonbabenko/pre-commit-terraform
-    rev: v1.77.1
+    rev: v1.83.4
     hooks:
       - id: terraform_checkov
       - id: terraform_fmt

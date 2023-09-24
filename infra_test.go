@@ -15,7 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/random"
 	"github.com/gruntwork-io/terratest/modules/retry"
 	"github.com/gruntwork-io/terratest/modules/terraform"
@@ -27,20 +26,34 @@ import (
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
+const worldFilesLocalDirectory = "/home/vhserver/.config/unity3d/IronGate/Valheim/worlds_local"
+const worldName string = "test-world"
+
 var uniqueID string = strings.ToLower(random.UniqueId())
 var stateBucket string = fmt.Sprintf("%s-terratest-valheim", uniqueID)
 var key string = fmt.Sprintf("%s/terraform.tfstate", uniqueID)
-var worldName string = "test-world"
-var l *logger.Logger
+var worldFileFwlName = fmt.Sprintf("%s.fwl", worldName)
+var worldFileDbName = fmt.Sprintf("%s.db", worldName)
+var worldFileLocalPaths = map[string]string{
+	"fwl": fmt.Sprintf("%s/%s", worldFilesLocalDirectory, worldFileFwlName),
+	"db":  fmt.Sprintf("%s/%s", worldFilesLocalDirectory, worldFileDbName),
+}
+
+// FunctionWithError is a function type that returns an error
+type FunctionWithError func() error
 
 func TestTerraform(t *testing.T) {
 	t.Parallel()
 
-	workingDir := "./template"
+	workingDirectory := "./template"
 	region := taws.GetRandomStableRegion(t, nil, nil)
 
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region: aws.String(region),
+	}))
+
 	defer test_structure.RunTestStage(t, "teardown_terraform_and_state_bucket", func() {
-		_, err := undeployUsingTerraform(t, workingDir)
+		_, err := undeployUsingTerraform(t, workingDirectory)
 		if err != nil {
 			log.Fatal("Terraform destroy failed, skipping state bucket teardown. Manual intervention required.")
 			t.SkipNow()
@@ -49,7 +62,7 @@ func TestTerraform(t *testing.T) {
 	})
 
 	defer test_structure.RunTestStage(t, "logs", func() {
-		fetchSyslogForInstance(t, region, workingDir)
+		fetchSyslogForInstance(t, region, workingDirectory)
 	})
 
 	test_structure.RunTestStage(t, "create_state_bucket", func() {
@@ -57,7 +70,7 @@ func TestTerraform(t *testing.T) {
 	})
 
 	test_structure.RunTestStage(t, "deploy_terraform", func() {
-		deployUsingTerraform(t, region, workingDir)
+		deployUsingTerraform(t, region, workingDirectory)
 	})
 
 	test_structure.RunTestStage(t, "check_state_bucket", func() {
@@ -66,7 +79,7 @@ func TestTerraform(t *testing.T) {
 	})
 
 	test_structure.RunTestStage(t, "check_s3_bucket_config", func() {
-		terraformOptions := test_structure.LoadTerraformOptions(t, workingDir)
+		terraformOptions := test_structure.LoadTerraformOptions(t, workingDirectory)
 
 		bucketID := terraform.Output(t, terraformOptions, "bucket_id")
 
@@ -78,11 +91,12 @@ func TestTerraform(t *testing.T) {
 	})
 
 	test_structure.RunTestStage(t, "test_instance_ssm", func() {
-		terraformOptions := test_structure.LoadTerraformOptions(t, workingDir)
+		terraformOptions := test_structure.LoadTerraformOptions(t, workingDirectory)
 
 		instanceID := terraform.Output(t, terraformOptions, "instance_id")
 		timeout := 3 * time.Minute
 
+		// Make sure SSM is ready before trying to connect
 		taws.WaitForSsmInstance(t, region, instanceID, timeout)
 
 		result := taws.CheckSsmCommand(t, region, instanceID, "echo Hello, World", timeout)
@@ -99,109 +113,128 @@ func TestTerraform(t *testing.T) {
 	})
 
 	test_structure.RunTestStage(t, "check_monitoring", func() {
-		terraformOptions := test_structure.LoadTerraformOptions(t, workingDir)
+		terraformOptions := test_structure.LoadTerraformOptions(t, workingDirectory)
 
 		monitoringURL := terraform.Output(t, terraformOptions, "monitoring_url")
 
-		validateResponse(t, monitoringURL, 25, 5*time.Second)
+		validateResponse(t, monitoringURL, 30, 5*time.Second)
 	})
 
 	test_structure.RunTestStage(t, "check_valheim_service", func() {
-		terraformOptions := test_structure.LoadTerraformOptions(t, workingDir)
+		// Given the instance is now running and SSM is available
+		// Expect the Valheim to be running
 
+		terraformOptions := test_structure.LoadTerraformOptions(t, workingDirectory)
 		instanceID := terraform.Output(t, terraformOptions, "instance_id")
-		timeout := 3 * time.Minute
 
-		taws.WaitForSsmInstance(t, region, instanceID, timeout)
+		// Make sure SSM is ready before trying to connect
+		taws.WaitForSsmInstance(t, region, instanceID, 3*time.Minute)
 
 		err := checkValheimIsRunning(t, region, instanceID)
 		if err != nil {
-			log.Printf("Valheim is not running on instance %s", instanceID)
-			t.Fatal(err)
+			t.Fatalf("Valheim is not running. Error: %v", err)
 		}
 	})
 
 	test_structure.RunTestStage(t, "test_backup", func() {
-		terraformOptions := test_structure.LoadTerraformOptions(t, workingDir)
+		// Given the instance is running and SSM is available
+		// When it is stopped and started again
+		// Expect the world files to be present in the backup S3 bucket
+
+		terraformOptions := test_structure.LoadTerraformOptions(t, workingDirectory)
 
 		instanceID := terraform.Output(t, terraformOptions, "instance_id")
 		bucketID := terraform.Output(t, terraformOptions, "bucket_id")
 
-		sess := session.Must(session.NewSession(&aws.Config{
-			Region: aws.String(region),
-		}))
-
-		err := startStopInstance(sess, instanceID)
+		// .db file is not created immediately by Valheim, so we instantiate it
+		_, err := runCommandWithRetry(t, fmt.Sprintf("Instantiating .db world file %s", worldFileLocalPaths["db"]), 2, 30*time.Second, region, instanceID, fmt.Sprintf("touch %s", worldFileLocalPaths["db"]), 5*time.Second)
 		if err != nil {
-			log.Printf("Error start stopping instance %s", instanceID)
-			t.Fatal(err)
+			t.Fatalf("Error running command: %v", err)
 		}
 
-		log.Printf("Checking that world files exist in S3 bucket %s", bucketID)
-		fileNames := []string{worldName + ".fwl", worldName + ".db"}
-		err = checkFilesExistInBucket(t, sess, bucketID, fileNames)
+		err = startStopInstance(sess, instanceID)
 		if err != nil {
-			log.Print("Files not found in bucket")
+			t.Fatalf("Error stopping and starting instance: %v", err)
+		}
+
+		worldFileNames := []string{worldFileFwlName, worldFileDbName}
+		_, err = retry.DoWithRetryE(t, fmt.Sprintf("Checking that world files exist in S3 bucket %s", bucketID), 5, 5*time.Second, func() (string, error) {
+			err = checkFilesExistInBucket(t, sess, bucketID, worldFileNames)
+			if err != nil {
+				return "", fmt.Errorf("Files %v not found in bucket %s: %v", worldFileNames, bucketID, err)
+			}
+			return "", nil
+		})
+		if err != nil {
+			// Ensure bucket is emptied so that Terraform can destroy it
+			emptyAndDeleteBucket(t, region, bucketID)
 			t.Fatal(err)
 		}
-		log.Print("Files found in bucket!")
+		log.Print("Files found in bucket")
 	})
 
 	test_structure.RunTestStage(t, "test_restore", func() {
-		terraformOptions := test_structure.LoadTerraformOptions(t, workingDir)
+		// Given the instance is running and SSM is available
+		// When it is started and no local world files are present
+		// Expect the backup S3 bucket world files to be used
+
+		terraformOptions := test_structure.LoadTerraformOptions(t, workingDirectory)
 
 		instanceID := terraform.Output(t, terraformOptions, "instance_id")
 		bucketID := terraform.Output(t, terraformOptions, "bucket_id")
+
+		// Ensure bucket is emptied so that Terraform can destroy it
 		defer emptyAndDeleteBucket(t, region, bucketID)
 
-		err := checkValheimIsRunning(t, region, instanceID)
+		// Make sure SSM is ready before trying to connect
+		taws.WaitForSsmInstance(t, region, instanceID, 3*time.Minute)
+
+		// Stop Valheim service before removing local world files
+		_, err := valheimService(t, region, instanceID, "stop")
 		if err != nil {
-			log.Printf("Valheim is not running on instance %s", instanceID)
 			t.Fatal(err)
 		}
 
-		timeout := 3 * time.Minute
-		taws.WaitForSsmInstance(t, region, instanceID, timeout)
-
-		log.Print("Removing local world files if they exist")
-		rmCmd1 := fmt.Sprintf("rm -rf /home/vhserver/.config/unity3d/IronGate/Valheim/worlds_local/%s.fwl", worldName)
-		rmCmd2 := fmt.Sprintf("rm -rf /home/vhserver/.config/unity3d/IronGate/Valheim/worlds_local/%s.db", worldName)
-
-		_, err = taws.CheckSsmCommandE(t, region, instanceID, rmCmd1, 5*time.Second)
-		if err != nil {
-			t.Fatalf("Failed to run command %s", rmCmd1)
-		}
-		_, err = taws.CheckSsmCommandE(t, region, instanceID, rmCmd2, 5*time.Second)
-		if err != nil {
-			t.Fatalf("Failed to run command %s", rmCmd2)
-		}
-
-		log.Print("Restarting Valheim service")
-		systemctlCmd := "systemctl restart valheim.service"
-		_, err = taws.CheckSsmCommandE(t, region, instanceID, systemctlCmd, 150*time.Second)
-		if err != nil {
-			t.Fatalf("Failed to run command %s", systemctlCmd)
-		}
-
-		logCmd := "grep 'Backups found, restoring...' /var/log/syslog"
-
-		retry.DoWithRetry(t, "Checking if backups were restored from S3", 60, 5*time.Second, func() (string, error) {
-			out, err := taws.CheckSsmCommandE(t, region, instanceID, logCmd, timeout)
+		// Remove any local world files if they exist
+		for _, worldFileLocalPath := range worldFileLocalPaths {
+			_, err := runCommandWithRetry(t, "Removing local world files", 2, 30*time.Second, region, instanceID, fmt.Sprintf("rm -rf %s", worldFileLocalPath), 5*time.Second)
 			if err != nil {
-				return "", fmt.Errorf("Error running command: %v", err)
+				t.Fatalf("Error running command: %v", err)
+			}
+		}
+
+		_, err = valheimService(t, region, instanceID, "start")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = checkValheimIsRunning(t, region, instanceID)
+		if err != nil {
+			t.Fatalf("Valheim is not running. Error: %v", err)
+		}
+
+		_, err = retry.DoWithRetryE(t, "Checking if backups were restored from S3", 2, 60*time.Second, func() (string, error) {
+			output, err := taws.CheckSsmCommandE(t, region, instanceID, "grep 'Backups found, restoring...' /var/log/syslog", 3*time.Minute)
+			if err != nil {
+				return "", fmt.Errorf("Command output was '%s' and error was '%v'", fmt.Sprint(output), err)
 			}
 
 			log.Print("Checking if log was found")
-			if out == nil {
+			if output == nil {
 				return "", fmt.Errorf("Log not found (was nil)")
 			}
-			if out.Stdout == "" {
+
+			if output.Stdout == "" {
 				return "", fmt.Errorf("Log not found (was \"\")")
 			}
 
-			log.Print("Log found!")
 			return "", nil
 		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		log.Print("Log found")
 
 		log.Print("############")
 		log.Print("### PASS ###")
@@ -212,9 +245,9 @@ func TestTerraform(t *testing.T) {
 	})
 }
 
-func deployUsingTerraform(t *testing.T, region string, workingDir string) {
+func deployUsingTerraform(t *testing.T, region string, workingDirectory string) {
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-		TerraformDir: workingDir,
+		TerraformDir: workingDirectory,
 		Vars: map[string]interface{}{
 			"aws_region":      region,
 			"instance_type":   "t3.medium",
@@ -241,13 +274,13 @@ func deployUsingTerraform(t *testing.T, region string, workingDir string) {
 		},
 	})
 
-	test_structure.SaveTerraformOptions(t, workingDir, terraformOptions)
+	test_structure.SaveTerraformOptions(t, workingDirectory, terraformOptions)
 
 	terraform.InitAndApply(t, terraformOptions)
 }
 
-func undeployUsingTerraform(t *testing.T, workingDir string) (string, error) {
-	terraformOptions := test_structure.LoadTerraformOptions(t, workingDir)
+func undeployUsingTerraform(t *testing.T, workingDirectory string) (string, error) {
+	terraformOptions := test_structure.LoadTerraformOptions(t, workingDirectory)
 	out, err := terraform.DestroyE(t, terraformOptions)
 	if err != nil {
 		return out, err
@@ -266,13 +299,16 @@ func validateResponse(t *testing.T, address string, maxRetries int, timeBetweenR
 	})
 }
 
-func fetchSyslogForInstance(t *testing.T, region string, workingDir string) {
-	terraformOptions := test_structure.LoadTerraformOptions(t, workingDir)
+func fetchSyslogForInstance(t *testing.T, region string, workingDirectory string) {
+	terraformOptions := test_structure.LoadTerraformOptions(t, workingDirectory)
 
 	instanceID := terraform.OutputRequired(t, terraformOptions, "instance_id")
-	logs := taws.GetSyslogForInstance(t, instanceID, region)
+	logs, err := taws.GetSyslogForInstanceE(t, instanceID, region)
+	if err != nil {
+		log.Printf("Failed to fetch syslog from instance: %s", err)
+	}
 
-	l.Logf(t, "Most recent syslog for Instance %s:\n\n%s\n", instanceID, logs)
+	log.Printf("Most recent syslog for Instance %s:\n\n%s\n", instanceID, logs)
 }
 
 func checkFilesExistInBucket(t *testing.T, sess *session.Session, bucketName string, fileNames []string) error {
@@ -354,7 +390,8 @@ func startStopInstance(sess *session.Session, instanceID string) error {
 }
 
 func checkValheimIsRunning(t *testing.T, region string, instanceID string) error {
-	_, err := retry.DoWithRetryE(t, "Checking if Valheim service is active", 60, 5*time.Second, func() (string, error) {
+	log.Print("Checking if Valheim is running")
+	_, err := retry.DoWithRetryE(t, "Checking if Valheim service is active", 60, 10*time.Second, func() (string, error) {
 		out, err := taws.CheckSsmCommandE(t, region, instanceID, "systemctl is-active valheim", 3*time.Minute)
 		if err != nil {
 			return "", fmt.Errorf("Failed to run command")
@@ -367,14 +404,14 @@ func checkValheimIsRunning(t *testing.T, region string, instanceID string) error
 			return "", fmt.Errorf("Expected status to be '%s' but was '%s'", expectedStatus, actualStatus)
 		}
 
-		log.Print("Valheim service is active!")
+		log.Print("Valheim service is active")
 		return "", nil
 	})
 	if err != nil {
 		return err
 	}
 
-	_, err = retry.DoWithRetryE(t, "Checking if Valheim process is running", 60, 5*time.Second, func() (string, error) {
+	_, err = retry.DoWithRetryE(t, "Checking if Valheim process is running", 60, 10*time.Second, func() (string, error) {
 		out, err := taws.CheckSsmCommandE(t, region, instanceID, "pgrep valheim_server", 3*time.Minute)
 		if err != nil {
 			return "", fmt.Errorf("Failed to run command")
@@ -385,14 +422,49 @@ func checkValheimIsRunning(t *testing.T, region string, instanceID string) error
 		if pid == "" {
 			return "", fmt.Errorf("PID not found")
 		}
-
-		log.Print("Valheim process is running!")
 		return "", nil
 	})
 	if err != nil {
 		return err
 	}
 
-	log.Print("Valheim is running!")
+	log.Print("Valheim process is running")
 	return nil
+}
+
+func runCommandWithRetry(t *testing.T, actionDescription string, maxRetries int, sleepBetweenRetries time.Duration, region string, instanceID string, command string, timeout time.Duration) (string, error) {
+	output, err := retry.DoWithRetryE(t, actionDescription, maxRetries, sleepBetweenRetries, func() (string, error) {
+		output, err := taws.CheckSsmCommandE(t, region, instanceID, command, timeout)
+		if err != nil {
+			return "", fmt.Errorf("Command output was '%s' and error was '%v'", fmt.Sprint(output), err)
+		}
+		return fmt.Sprint(output), nil
+	})
+	if err != nil {
+		return "", err
+	}
+	return output, nil
+}
+
+func valheimService(t *testing.T, region string, instanceID string, action string) (string, error) {
+	var actionDescription string
+
+	switch action {
+	case "start":
+		actionDescription = "Starting Valheim service"
+	case "stop":
+		actionDescription = "Stopping Valheim service"
+	case "restart":
+		actionDescription = "Restarting Valheim service"
+	default:
+		return "", fmt.Errorf("%s is an unsupported action", action)
+	}
+
+	command := fmt.Sprintf("systemctl %s valheim.service", action)
+
+	output, err := runCommandWithRetry(t, actionDescription, 2, 30*time.Second, region, instanceID, command, 120*time.Second)
+	if err != nil {
+		return "", fmt.Errorf("Error running command: %v", err)
+	}
+	return output, nil
 }

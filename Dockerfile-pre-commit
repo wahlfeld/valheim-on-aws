@@ -5,7 +5,7 @@ FROM python:3.11-slim-buster
 
 RUN pip install --upgrade pip \
     pip install checkov \
-    pip install pre-commit==2.21.0
+    pip install pre-commit==3.4.0
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
