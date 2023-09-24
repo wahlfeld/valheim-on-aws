@@ -1,11 +1,11 @@
 .PHONY: .phony
 
-all: .phony pre-commit test
+all: .phony validate test
 
 build: .phony
 	docker-compose build
 
-pre-commit: .phony clean build
+validate: .phony clean build
 	CMD='pre-commit run --all-files' docker-compose run --rm pre-commit
 
 test: .phony clean_docker build

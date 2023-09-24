@@ -36,6 +36,8 @@ if [ ! -f "/home/${username}/.config/unity3d/IronGate/Valheim/worlds_local/${wor
         aws s3 cp "s3://${bucket}/${world_name}.fwl" "/home/${username}/.config/unity3d/IronGate/Valheim/worlds_local/${world_name}.fwl"
         aws s3 cp "s3://${bucket}/${world_name}.db" "/home/${username}/.config/unity3d/IronGate/Valheim/worlds_local/${world_name}.db"
     fi
+else
+    echo "World files found locally"
 fi
 
 echo "Syncing admin list"

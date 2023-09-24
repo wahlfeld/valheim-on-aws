@@ -22,8 +22,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: pre-commit
-        run: make pre-commit
+      - name: validate
+        run: make validate
 
       - name: test
         run: make test
