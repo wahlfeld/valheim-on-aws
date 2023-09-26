@@ -1,19 +1,22 @@
+# Variables for common commands
+DOCKER_COMPOSE_RUN := docker-compose run --rm
+
 .PHONY: .phony
 
 all: .phony validate test
 
-build: .phony
+build:
 	docker-compose build
 
 validate: .phony clean build
-	CMD='pre-commit run --all-files' docker-compose run --rm pre-commit
+	CMD='pre-commit run --all-files' $(DOCKER_COMPOSE_RUN) pre-commit
 
-test: .phony clean_docker build
-	CMD='go test -v -timeout 30m' docker-compose run --rm test
+test: clean_docker build
+	CMD='go test -v -timeout 30m' $(DOCKER_COMPOSE_RUN) test
 
 clean: clean_docker clean_terraform
 
-clean_docker: .phony
+clean_docker:
 	docker-compose down -v --remove-orphans
 
 clean_terraform: .phony

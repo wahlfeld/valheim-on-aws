@@ -1,26 +1,26 @@
-FROM python:3.11-slim-buster
+# Use a specific version for predictability
+FROM python:3.11.0-slim-buster
+
 # The following are unnecessary, as is only used for CI
 #checkov:skip=CKV_DOCKER_2: healthcheck
 #checkov:skip=CKV_DOCKER_3: user
 
-RUN pip install --upgrade pip \
-    pip install checkov \
-    pip install pre-commit==3.4.0
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    curl \
-    git \
-    shellcheck \
-    unzip && \
+# Install Python packages and system packages
+RUN pip install --upgrade pip && \
+    pip install checkov pre-commit==3.4.0 && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends curl git shellcheck unzip && \
     rm -rf /var/lib/apt/lists/*
 
+# Install terraform-switcher, terraform
 RUN curl -L https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh | bash
 COPY module/terraform.tf .
 RUN tfswitch && terraform --version
 
+# Install tflint
 RUN curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
 RUN tflint --version
 
+# Set work directory
 WORKDIR /workdir/
 RUN git config --global --add safe.directory /workdir
