@@ -6,3 +6,9 @@ repos:
       - id: terraform_fmt
       - id: terraform_tflint
       - id: terraform_validate
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: trailing-whitespace

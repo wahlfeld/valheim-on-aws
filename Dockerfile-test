@@ -1,20 +1,21 @@
-FROM golang:1.20-buster
+# Use a specific version for predictability
+FROM golang:1.20.0-buster
+
 # The following are unnecessary, as is only used for CI
 #checkov:skip=CKV_DOCKER_2: healthcheck
 #checkov:skip=CKV_DOCKER_3: user
 
+# Install system packages
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    curl \
-    unzip && \
+    apt-get install -y --no-install-recommends curl unzip && \
     rm -rf /var/lib/apt/lists/*
 
+# Install terraform-switcher and terraform
 RUN curl -L https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh | bash
 COPY module/terraform.tf .
 RUN tfswitch && terraform --version
 
+# Set work directory and copy go mod files
 WORKDIR /workdir/
-
-COPY go.mod .
-COPY go.sum .
+COPY go.mod go.sum ./
 RUN go mod download
