@@ -17,18 +17,12 @@ resource "aws_s3_bucket_versioning" "valheim" {
 }
 
 resource "aws_s3_bucket_ownership_controls" "valheim" {
+  #checkov:skip=CKV2_AWS_65: https://github.com/bridgecrewio/checkov/issues/5623
   bucket = aws_s3_bucket.valheim.id
 
   rule {
     object_ownership = "BucketOwnerPreferred"
   }
-}
-
-resource "aws_s3_bucket_acl" "valheim" {
-  bucket = aws_s3_bucket.valheim.id
-  acl    = "private"
-
-  depends_on = [aws_s3_bucket_ownership_controls.valheim]
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "valheim" {
