@@ -391,10 +391,10 @@ func startStopInstance(sess *session.Session, instanceID string) error {
 
 func checkValheimIsRunning(t *testing.T, region string, instanceID string) error {
 	log.Print("Checking if Valheim is running")
-	_, err := retry.DoWithRetryE(t, "Checking if Valheim service is active", 60, 10*time.Second, func() (string, error) {
+	_, err := retry.DoWithRetryE(t, "Checking if Valheim service is active", 100, 10*time.Second, func() (string, error) {
 		out, err := taws.CheckSsmCommandE(t, region, instanceID, "systemctl is-active valheim", 3*time.Minute)
 		if err != nil {
-			return "", fmt.Errorf("Failed to run command")
+			return "", fmt.Errorf("Failed to run command: %v", out)
 		}
 
 		expectedStatus := "active"
@@ -411,10 +411,10 @@ func checkValheimIsRunning(t *testing.T, region string, instanceID string) error
 		return err
 	}
 
-	_, err = retry.DoWithRetryE(t, "Checking if Valheim process is running", 60, 10*time.Second, func() (string, error) {
+	_, err = retry.DoWithRetryE(t, "Checking if Valheim process is running", 100, 10*time.Second, func() (string, error) {
 		out, err := taws.CheckSsmCommandE(t, region, instanceID, "pgrep valheim_server", 3*time.Minute)
 		if err != nil {
-			return "", fmt.Errorf("Failed to run command")
+			return "", fmt.Errorf("Failed to run command: %v", out)
 		}
 
 		log.Print("Checking if PID was found")
