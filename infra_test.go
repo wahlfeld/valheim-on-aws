@@ -3,7 +3,6 @@ package test
 import (
 	"crypto/tls"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -15,11 +14,11 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/gruntwork-io/terratest/modules/random"
 	"github.com/gruntwork-io/terratest/modules/retry"
 	"github.com/gruntwork-io/terratest/modules/terraform"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	taws "github.com/gruntwork-io/terratest/modules/aws"
 	http_helper "github.com/gruntwork-io/terratest/modules/http-helper"
@@ -55,7 +54,7 @@ func TestTerraform(t *testing.T) {
 	defer test_structure.RunTestStage(t, "teardown_terraform_and_state_bucket", func() {
 		_, err := undeployUsingTerraform(t, workingDirectory)
 		if err != nil {
-			log.Fatal("Terraform destroy failed, skipping state bucket teardown. Manual intervention required.")
+			t.Fatal("Terraform destroy failed, skipping state bucket teardown. Manual intervention required.")
 			t.SkipNow()
 		}
 		emptyAndDeleteBucket(t, region, stateBucket)
@@ -131,9 +130,7 @@ func TestTerraform(t *testing.T) {
 		taws.WaitForSsmInstance(t, region, instanceID, 3*time.Minute)
 
 		err := checkValheimIsRunning(t, region, instanceID)
-		if err != nil {
-			t.Fatalf("Valheim is not running. Error: %v", err)
-		}
+		require.NoError(t, err, "Valheim is not running. Error: %v", err)
 	})
 
 	test_structure.RunTestStage(t, "test_backup", func() {
@@ -149,11 +146,15 @@ func TestTerraform(t *testing.T) {
 		// .db file is not created immediately by Valheim, so we instantiate it
 		_, err := runCommandWithRetry(t, fmt.Sprintf("Instantiating .db world file %s", worldFileLocalPaths["db"]), 2, 30*time.Second, region, instanceID, fmt.Sprintf("touch %s", worldFileLocalPaths["db"]), 5*time.Second)
 		if err != nil {
+			// Ensure bucket is emptied so that Terraform can destroy it
+			emptyAndDeleteBucket(t, region, bucketID)
 			t.Fatalf("Error running command: %v", err)
 		}
 
-		err = startStopInstance(sess, instanceID)
+		err = startStopInstance(t, sess, instanceID)
 		if err != nil {
+			// Ensure bucket is emptied so that Terraform can destroy it
+			emptyAndDeleteBucket(t, region, bucketID)
 			t.Fatalf("Error stopping and starting instance: %v", err)
 		}
 
@@ -161,7 +162,7 @@ func TestTerraform(t *testing.T) {
 		_, err = retry.DoWithRetryE(t, fmt.Sprintf("Checking that world files exist in S3 bucket %s", bucketID), 5, 5*time.Second, func() (string, error) {
 			err = checkFilesExistInBucket(t, sess, bucketID, worldFileNames)
 			if err != nil {
-				return "", fmt.Errorf("Files %v not found in bucket %s: %v", worldFileNames, bucketID, err)
+				return "", fmt.Errorf("files %v not found in bucket %s: %v", worldFileNames, bucketID, err)
 			}
 			return "", nil
 		})
@@ -170,7 +171,8 @@ func TestTerraform(t *testing.T) {
 			emptyAndDeleteBucket(t, region, bucketID)
 			t.Fatal(err)
 		}
-		log.Print("Files found in bucket")
+
+		t.Log("Files found in bucket")
 	})
 
 	test_structure.RunTestStage(t, "test_restore", func() {
@@ -191,56 +193,46 @@ func TestTerraform(t *testing.T) {
 
 		// Stop Valheim service before removing local world files
 		_, err := valheimService(t, region, instanceID, "stop")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		// Remove any local world files if they exist
 		for _, worldFileLocalPath := range worldFileLocalPaths {
 			_, err := runCommandWithRetry(t, "Removing local world files", 2, 30*time.Second, region, instanceID, fmt.Sprintf("rm -rf %s", worldFileLocalPath), 5*time.Second)
-			if err != nil {
-				t.Fatalf("Error running command: %v", err)
-			}
+			require.NoError(t, err, "Error running command: %v", err)
 		}
 
 		_, err = valheimService(t, region, instanceID, "start")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		err = checkValheimIsRunning(t, region, instanceID)
-		if err != nil {
-			t.Fatalf("Valheim is not running. Error: %v", err)
-		}
+		require.NoError(t, err, "Valheim is not running")
 
 		_, err = retry.DoWithRetryE(t, "Checking if backups were restored from S3", 2, 60*time.Second, func() (string, error) {
 			output, err := taws.CheckSsmCommandE(t, region, instanceID, "grep 'Backups found, restoring...' /var/log/syslog", 3*time.Minute)
 			if err != nil {
-				return "", fmt.Errorf("Command output was '%s' and error was '%v'", fmt.Sprint(output), err)
+				return "", fmt.Errorf("command output was '%+v' and error was '%v'", output, err)
 			}
 
-			log.Print("Checking if log was found")
+			t.Log("Checking if log was found")
 			if output == nil {
-				return "", fmt.Errorf("Log not found (was nil)")
+				return "", fmt.Errorf("log not found (was nil)")
 			}
 
 			if output.Stdout == "" {
-				return "", fmt.Errorf("Log not found (was \"\")")
+				return "", fmt.Errorf("log not found (was \"\")")
 			}
 
 			return "", nil
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
-		log.Print("Log found")
+		t.Log("Log found")
 
-		log.Print("############")
-		log.Print("### PASS ###")
-		log.Print("############")
-		log.Printf("Emptying and deleting bucket %s now, so that Terraform can destroy it", bucketID)
-		log.Print("Skipping syslog...")
+		t.Log("############")
+		t.Log("### PASS ###")
+		t.Log("############")
+		t.Logf("Emptying and deleting bucket %s now, so that Terraform can destroy it", bucketID)
+		t.Log("Skipping syslog...")
 		os.Setenv("SKIP_logs", "true")
 	})
 }
@@ -276,7 +268,31 @@ func deployUsingTerraform(t *testing.T, region string, workingDirectory string) 
 
 	test_structure.SaveTerraformOptions(t, workingDirectory, terraformOptions)
 
-	terraform.InitAndApply(t, terraformOptions)
+	maxRetries := 2
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// Run Terraform Init and Apply and capture any errors
+		_, err := terraform.InitAndApplyE(t, terraformOptions)
+		if err == nil {
+			// If there's no error, break out of the loop
+			break
+		}
+
+		// Convert the error to a string for parsing
+		errMsg := fmt.Sprintf("%v", err)
+
+		// Check if the error message contains the specific substrings related to spot instance errors
+		if strings.Contains(errMsg, "Error waiting for spot instance") || strings.Contains(errMsg, "bad-parameters") {
+			// Log the error and decide to retry
+			t.Logf("Attempt %d: Spot instance request error: %v", attempt+1, err)
+			if attempt < maxRetries {
+				t.Logf("Retrying terraform apply due to spot instance error...")
+				continue // Retry the loop
+			}
+		}
+
+		// If we've reached the maximum number of retries or the error is not spot-related, fail the test
+		t.Fatalf("Terraform apply failed after %d attempts with error: %v", attempt+1, err)
+	}
 }
 
 func undeployUsingTerraform(t *testing.T, workingDirectory string) (string, error) {
@@ -305,10 +321,10 @@ func fetchSyslogForInstance(t *testing.T, region string, workingDirectory string
 	instanceID := terraform.OutputRequired(t, terraformOptions, "instance_id")
 	logs, err := taws.GetSyslogForInstanceE(t, instanceID, region)
 	if err != nil {
-		log.Printf("Failed to fetch syslog from instance: %s", err)
+		t.Logf("Failed to fetch syslog from instance: %s", err)
 	}
 
-	log.Printf("Most recent syslog for Instance %s:\n\n%s\n", instanceID, logs)
+	t.Logf("Most recent syslog for Instance %s:\n\n%s\n", instanceID, logs)
 }
 
 func checkFilesExistInBucket(t *testing.T, sess *session.Session, bucketName string, fileNames []string) error {
@@ -323,7 +339,7 @@ func checkFilesExistInBucket(t *testing.T, sess *session.Session, bucketName str
 		_, err := svc.HeadObject(input)
 		if err != nil {
 			if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == "NotFound" {
-				return fmt.Errorf("File %s does not exist in the bucket %s", fileName, bucketName)
+				return fmt.Errorf("file %s does not exist in the bucket %s", fileName, bucketName)
 			}
 			return err
 		}
@@ -331,10 +347,10 @@ func checkFilesExistInBucket(t *testing.T, sess *session.Session, bucketName str
 	return nil
 }
 
-func startStopInstance(sess *session.Session, instanceID string) error {
+func startStopInstance(t *testing.T, sess *session.Session, instanceID string) error {
 	svc := ec2.New(sess)
 
-	log.Printf("Stopping instance %s", instanceID)
+	t.Logf("Stopping instance %s", instanceID)
 	inputStop := &ec2.StopInstancesInput{
 		InstanceIds: []*string{aws.String(instanceID)},
 	}
@@ -343,7 +359,7 @@ func startStopInstance(sess *session.Session, instanceID string) error {
 		return err
 	}
 
-	log.Printf("Waiting until instance %s has stopped", instanceID)
+	t.Logf("Waiting until instance %s has stopped", instanceID)
 	err = svc.WaitUntilInstanceStopped(&ec2.DescribeInstancesInput{
 		InstanceIds: []*string{aws.String(instanceID)},
 	})
@@ -357,11 +373,11 @@ func startStopInstance(sess *session.Session, instanceID string) error {
 
 	for !readyToStart {
 		if time.Since(startTime) > 5*time.Minute {
-			log.Printf("Timed out waiting for instance %s to be ready to start", instanceID)
+			t.Logf("Timed out waiting for instance %s to be ready to start", instanceID)
 			return err
 		}
 		attempts++
-		log.Printf("Starting instance %s (attempt %d)", instanceID, attempts)
+		t.Logf("Starting instance %s (attempt %d)", instanceID, attempts)
 
 		inputStart := &ec2.StartInstancesInput{
 			InstanceIds: []*string{aws.String(instanceID)},
@@ -370,15 +386,15 @@ func startStopInstance(sess *session.Session, instanceID string) error {
 		if err == nil {
 			readyToStart = true
 		} else {
-			log.Printf("Error starting instance %s: %s", instanceID, err.Error())
-			log.Print("Instance not ready to start. Sleeping for 5s and will try again.")
+			t.Logf("Error starting instance %s: %s", instanceID, err.Error())
+			t.Log("Instance not ready to start. Sleeping for 5s and will try again.")
 			time.Sleep(5 * time.Second)
 		}
 	}
 
-	log.Printf("Instance %s was ready to start after %d attempts", instanceID, attempts)
+	t.Logf("Instance %s was ready to start after %d attempts", instanceID, attempts)
 
-	log.Printf("Waiting until instance %s is running", instanceID)
+	t.Logf("Waiting until instance %s is running", instanceID)
 	err = svc.WaitUntilInstanceRunning(&ec2.DescribeInstancesInput{
 		InstanceIds: []*string{aws.String(instanceID)},
 	})
@@ -390,21 +406,22 @@ func startStopInstance(sess *session.Session, instanceID string) error {
 }
 
 func checkValheimIsRunning(t *testing.T, region string, instanceID string) error {
-	log.Print("Checking if Valheim is running")
+	t.Log("Checking if Valheim is running")
 	_, err := retry.DoWithRetryE(t, "Checking if Valheim service is active", 100, 10*time.Second, func() (string, error) {
-		out, err := taws.CheckSsmCommandE(t, region, instanceID, "systemctl is-active valheim", 3*time.Minute)
+		output, err := taws.CheckSsmCommandE(t, region, instanceID, "systemctl is-active valheim", 30*time.Second)
 		if err != nil {
-			return "", fmt.Errorf("Failed to run command: %v", out)
+			t.Logf("Command output was '%+v' and error was '%v'", output, err)
+			return "", handleErrorWithSyslog(t, region, instanceID, err)
 		}
 
 		expectedStatus := "active"
-		actualStatus := strings.TrimSpace(out.Stdout)
+		actualStatus := strings.TrimSpace(output.Stdout)
 
 		if actualStatus != expectedStatus {
-			return "", fmt.Errorf("Expected status to be '%s' but was '%s'", expectedStatus, actualStatus)
+			return "", fmt.Errorf("expected status to be '%s' but was '%s'", expectedStatus, actualStatus)
 		}
 
-		log.Print("Valheim service is active")
+		t.Log("Valheim service is active")
 		return "", nil
 	})
 	if err != nil {
@@ -412,13 +429,22 @@ func checkValheimIsRunning(t *testing.T, region string, instanceID string) error
 	}
 
 	_, err = retry.DoWithRetryE(t, "Checking if Valheim process is running", 100, 10*time.Second, func() (string, error) {
-		out, err := taws.CheckSsmCommandE(t, region, instanceID, "pgrep valheim_server", 3*time.Minute)
+		output, err := taws.CheckSsmCommandE(t, region, instanceID, "pgrep valheim_server", 30*time.Second)
 		if err != nil {
-			return "", fmt.Errorf("Failed to run command: %v", out)
+			t.Logf("Command output was '%+v' and error was '%v'", output, err)
+
+			output, err := taws.CheckSsmCommandE(t, region, instanceID, "ps aux", 30*time.Second)
+			if err != nil {
+				return "", fmt.Errorf("error running process list command: %v | output: %v", err, output)
+			}
+
+			t.Logf("Running processes:\n%s", output.Stdout)
+
+			return "", handleErrorWithSyslog(t, region, instanceID, err)
 		}
 
-		log.Print("Checking if PID was found")
-		pid := strings.TrimSpace(out.Stdout)
+		t.Log("Checking if PID was found")
+		pid := strings.TrimSpace(output.Stdout)
 		if pid == "" {
 			return "", fmt.Errorf("PID not found")
 		}
@@ -428,7 +454,7 @@ func checkValheimIsRunning(t *testing.T, region string, instanceID string) error
 		return err
 	}
 
-	log.Print("Valheim process is running")
+	t.Log("Valheim process is running")
 	return nil
 }
 
@@ -436,7 +462,7 @@ func runCommandWithRetry(t *testing.T, actionDescription string, maxRetries int,
 	output, err := retry.DoWithRetryE(t, actionDescription, maxRetries, sleepBetweenRetries, func() (string, error) {
 		output, err := taws.CheckSsmCommandE(t, region, instanceID, command, timeout)
 		if err != nil {
-			return "", fmt.Errorf("Command output was '%s' and error was '%v'", fmt.Sprint(output), err)
+			return "", fmt.Errorf("command output was '%+v' and error was '%v'", output, err)
 		}
 		return fmt.Sprint(output), nil
 	})
@@ -464,7 +490,25 @@ func valheimService(t *testing.T, region string, instanceID string, action strin
 
 	output, err := runCommandWithRetry(t, actionDescription, 2, 30*time.Second, region, instanceID, command, 120*time.Second)
 	if err != nil {
-		return "", fmt.Errorf("Error running command: %v", err)
+		return "", fmt.Errorf("error running command: %v", err)
 	}
 	return output, nil
+}
+
+func fetchSyslog(t *testing.T, region string, instanceID string) string {
+	command := "tail -n 50 /var/log/syslog"
+	syslogOutput, err := taws.CheckSsmCommandE(t, region, instanceID, command, 30*time.Second)
+	if err != nil {
+		t.Logf("Failed to get syslog: %+v", err)
+		return "Could not retrieve syslog."
+	}
+	return syslogOutput.Stdout
+}
+
+func handleErrorWithSyslog(t *testing.T, region string, instanceID string, err error) error {
+	if err != nil {
+		syslog := fetchSyslog(t, region, instanceID)
+		t.Logf("Error occurred: %+v\nLast 50 lines of syslog:\n%s", err, syslog)
+	}
+	return err
 }

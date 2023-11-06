@@ -12,7 +12,7 @@ validate: .phony clean build
 	CMD='pre-commit run --all-files' $(DOCKER_COMPOSE_RUN) pre-commit
 
 test: clean_docker build
-	CMD='go test -v -timeout 45m' $(DOCKER_COMPOSE_RUN) test
+	CMD='go test -v -timeout 60m' $(DOCKER_COMPOSE_RUN) test
 
 clean: clean_docker clean_terraform
 
