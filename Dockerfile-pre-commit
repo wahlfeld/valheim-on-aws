@@ -1,5 +1,5 @@
 # Use a specific version for predictability
-FROM python:3.11.0-slim-buster
+FROM python:3.11.4-slim-buster
 
 # The following are unnecessary, as is only used for CI
 #checkov:skip=CKV_DOCKER_2: healthcheck
