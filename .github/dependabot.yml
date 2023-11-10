@@ -6,11 +6,6 @@ updates:
       interval: "weekly"
 
   - package-ecosystem: "terraform"
-    directory: "/module"
-    schedule:
-      interval: "weekly"
-
-  - package-ecosystem: "terraform"
     directory: "/template"
     schedule:
       interval: "weekly"
