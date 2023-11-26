@@ -7,7 +7,7 @@ apt install -y \
     awscli \
     ca-certificates \
     jq \
-    lib32gcc1 \
+    lib32gcc-s1 \
     lib32stdc++6 \
     libjson-c-dev \
     libsdl2-2.0-0:i386 \
