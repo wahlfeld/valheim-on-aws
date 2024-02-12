@@ -1,5 +1,5 @@
 # Use a specific version for predictability
-FROM golang:1.21-bullseye
+FROM golang:1.22-bullseye
 
 # The following are unnecessary, as is only used for CI
 #checkov:skip=CKV_DOCKER_2: healthcheck
