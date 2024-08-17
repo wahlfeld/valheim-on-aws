@@ -10,7 +10,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     build-essential curl git shellcheck unzip && \
     pip install --upgrade pip && \
-    pip install checkov pre-commit==3.4.0 && \
+    pip install checkov pre-commit && \
     rm -rf /var/lib/apt/lists/*
 
 # Install terraform-switcher, terraform
